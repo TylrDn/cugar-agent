@@ -1,0 +1,35 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+      
+      - name: Install Playwright browsers
+        run: uv run playwright install --with-deps chromium
+      
+      - name: Run unit tests
+        run: bash src/scripts/run_tests.sh unit_tests
+

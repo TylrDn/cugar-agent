@@ -1,6 +1,6 @@
 [project]
 name = "cuga"
-version = "0.1.2"
+version = "0.1.3"
 description = "CUGA is an open-source generalist agent for the enterprise, supporting complex task execution on web and APIs, OpenAPI/MCP integrations, composable architecture, reasoning modes, and policy-aware features."
 readme = "README.md"
 license = "Apache-2.0"
@@ -81,7 +81,8 @@ dev = [
     "rapidfuzz",
     "pytest>=8.3.5",
     "pytest-asyncio>=1.1.0",
-    "cugaviz"
+    "cugaviz",
+    "pre-commit>=4.3.0",
 ]
 groq = [
     "langchain-groq>=0.3.8",
@@ -92,4 +93,3 @@ google-genai = [
 sandbox = [
     "llm-sandbox>=0.1.3",
 ]
-
