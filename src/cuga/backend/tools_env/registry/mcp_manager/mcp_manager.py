@@ -526,25 +526,15 @@ class MCPManager:
                     if include_response_schema:
                         output_schema = func.get('outputSchema', {})
                         if output_schema:
-                            # FastMCP wraps results in a "result" field with x-fastmcp-wrap-result flag
-                            # Unwrap it to get the actual response schema
-                            if output_schema.get('x-fastmcp-wrap-result') and 'properties' in output_schema:
-                                result_prop = output_schema.get('properties', {}).get('result', {})
-                                api_info["response_schemas"] = {
-                                    "success": result_prop,
-                                    "failure": {"error": "string"},
-                                }
-                            else:
-                                # Use the output schema as-is if not wrapped
-                                api_info["response_schemas"] = {
-                                    "success": output_schema,
-                                    "failure": {"error": "string"},
-                                }
+                            api_info["response_schemas"] = {
+                                "success": output_schema,
+                                "failure": {"type": "string"},
+                            }
                         else:
                             # Fallback to default if no output schema is defined
                             api_info["response_schemas"] = {
-                                "success": {"result": "string"},
-                                "failure": {"error": "string"},
+                                "success": {"string"},
+                                "failure": {"string"},
                             }
 
                     result[tool_name] = api_info
@@ -796,7 +786,17 @@ class MCPManager:
 
                 async with client:
                     result = await client.call_tool(original_tool_name, args)
-                    result_text = result.content[0].text if result.content else str(result)
+                    ##TODO add result.structured output if exists and retutn instead of text key  return [TextContent(text=result_text, type='text')]
+                    structured_content = (
+                        result.structured_content if hasattr(result, 'structured_content') else None
+                    )
+                    result_text = (
+                        structured_content
+                        if structured_content
+                        else (result.content[0].text if result.content else str(result))
+                    )
+                    if isinstance(result_text, dict):
+                        result_text = json.dumps(result_text)
                     return [TextContent(text=result_text, type='text')]
             else:
                 url = self.mcp_clients[server_name]
@@ -809,9 +809,31 @@ class MCPManager:
                     ) as response:
                         if response.status == 200:
                             result = await response.json()
-                            return [TextContent(text=str(result), type='text')]
+                            structured_content = result.get('structured_content', None)
+                            result_text = (
+                                structured_content
+                                if structured_content
+                                else (
+                                    result.get('content', [{}])[0].get('text', '')
+                                    if result.get('content')
+                                    else str(result)
+                                )
+                            )
+                            if isinstance(result_text, dict):
+                                result_text = json.dumps(result_text)
+                            return [TextContent(text=result_text, type='text')]
                         else:
                             error_msg = f"MCP server call failed with status {response.status}"
+                            structured_content = result.get('structured_content', None)
+                            result_text = (
+                                structured_content
+                                if structured_content
+                                else (
+                                    result.get('content', [{}])[0].get('text', '')
+                                    if result.get('content')
+                                    else str(result)
+                                )
+                            )
                             return [TextContent(text=error_msg, type='text')]
 
         except Exception as e:

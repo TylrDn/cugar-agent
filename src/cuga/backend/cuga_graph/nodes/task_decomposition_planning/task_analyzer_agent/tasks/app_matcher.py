@@ -13,7 +13,7 @@ llm_manager = LLMManager()
 class AppMatch(BaseModel):
     """Model to define which apps are relevant for a user intent."""
 
-    thoughts: List[str]
+    thoughts: str
     relevant_apps: List[str]
 
 

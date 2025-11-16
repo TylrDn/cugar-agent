@@ -145,11 +145,11 @@ class TestOutputSchemaServer:
             content = result[0]
             if hasattr(content, 'text'):
                 response_data = json.loads(content.text)
-                # Should be a list or dict with items
+                # Should be a list or dict with result
                 assert isinstance(response_data, (list, dict))
                 if isinstance(response_data, dict):
-                    assert 'items' in response_data
-                    assert isinstance(response_data['items'], list)
+                    assert 'result' in response_data
+                    assert isinstance(response_data['result'], list)
 
     @pytest.mark.asyncio
     async def test_pydantic_model_response_schema(self, manager):
@@ -188,10 +188,10 @@ class TestOutputSchemaServer:
             content = result[0]
             if hasattr(content, 'text'):
                 response_data = json.loads(content.text)
-                # Should be a list or dict with products
+                # Should be a dict with result containing array of products
                 if isinstance(response_data, dict):
-                    assert 'products' in response_data
-                    products = response_data['products']
+                    assert 'result' in response_data
+                    products = response_data['result']
                     assert isinstance(products, list)
                     if len(products) > 0:
                         product = products[0]

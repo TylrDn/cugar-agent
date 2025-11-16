@@ -75,14 +75,14 @@ class TaskAnalyzer(BaseNode):
                     AnalyzeTaskAppsOutput(
                         name=apps[0].name, description=apps[0].description, url=apps[0].url, type='api'
                     )
-                ], AppMatch(relevant_apps=[apps[0].name], thoughts=[])
+                ], AppMatch(relevant_apps=[apps[0].name], thoughts="")
             if mode == 'hybrid' and len(apps) == 1:
                 return [
                     AnalyzeTaskAppsOutput(
                         name=apps[0].name, description=apps[0].description, url=apps[0].url, type='api'
                     ),
                     AnalyzeTaskAppsOutput(name=web_app_name, description=web_description, url="", type='web'),
-                ], AppMatch(relevant_apps=[apps[0].name, web_app_name], thoughts=[])
+                ], AppMatch(relevant_apps=[apps[0].name, web_app_name], thoughts="")
             logger.debug(f"All available apps: {[p for p in apps]}")
             if len(settings.features.forced_apps) == 0:
                 # memory integration
@@ -105,7 +105,7 @@ class TaskAnalyzer(BaseNode):
                     }
                 )
             else:
-                res = AppMatch(thoughts=[], relevant_apps=settings.features.forced_apps)
+                res = AppMatch(thoughts="", relevant_apps=settings.features.forced_apps)
             logger.debug(f"Matched apps: {res.relevant_apps}")
             result = []
             for p in res.relevant_apps:
@@ -121,7 +121,7 @@ class TaskAnalyzer(BaseNode):
         elif mode == 'web':
             return [
                 AnalyzeTaskAppsOutput(name=web_app_name, description=web_description, url="", type='web')
-            ], AppMatch(relevant_apps=[web_app_name], thoughts=[])
+            ], AppMatch(relevant_apps=[web_app_name], thoughts="")
 
     @staticmethod
     async def call_authenticate_apps(apps: List[str]):

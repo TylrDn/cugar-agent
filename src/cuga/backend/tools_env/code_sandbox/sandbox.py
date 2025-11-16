@@ -206,8 +206,17 @@ async def run_local(code_content: str) -> ExecutionResult:
 
     try:
         with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
-            # Use compile to get better error reporting
-            compiled_code = compile(code_content, '<string>', 'exec')
+            # Use compile to get better error reporting and validate syntax
+            try:
+                compiled_code = compile(code_content, '<string>', 'exec')
+            except SyntaxError as se:
+                # Provide detailed syntax error information
+                error_msg = "Syntax Error in generated code:\n"
+                error_msg += f"  Line {se.lineno}: {se.text.strip() if se.text else 'N/A'}\n"
+                error_msg += f"  {' ' * (se.offset - 1) if se.offset else ''}^\n"
+                error_msg += f"  {se.msg}\n"
+                raise SyntaxError(error_msg) from se
+
             exec(compiled_code, namespace, namespace)
 
             # Now get the wrapper function from namespace and await it
@@ -216,16 +225,75 @@ async def run_local(code_content: str) -> ExecutionResult:
             ):
                 await namespace['__cuga_async_wrapper__']()
     except SystemExit as e:
-        # Catch exit() calls to prevent terminating the entire process
         exit_code = e.code if e.code is not None else 0
+        logger.warning("=" * 80)
+        logger.warning(f"SystemExit caught in code execution: exit_code={exit_code}")
+        logger.warning("=" * 80)
         stderr_buffer.write(f"Generated Code called exit with code : {exit_code}")
-    except Exception as e:
+    except SyntaxError as e:
+        import traceback
+
         exit_code = 1
-        stderr_buffer.write(str(e))
+        error_details = traceback.format_exc()
+
+        logger.error("=" * 80)
+        logger.error("SYNTAX ERROR IN GENERATED CODE")
+        logger.error("=" * 80)
+        logger.error(f"Error Message: {str(e)}")
+        logger.error("=" * 80)
+        logger.error("Full Stack Trace:")
+        logger.error(error_details)
+        logger.error("=" * 80)
+
+        # Write detailed error with traceback to stderr
+        stderr_buffer.write(f"Error during execution: {type(e).__name__}(\"{str(e)}\")\n")
+        stderr_buffer.write("Traceback (most recent call last):\n")
+        stderr_buffer.write(error_details)
+    except Exception as e:
+        import traceback
+
+        exit_code = 1
+        error_details = traceback.format_exc()
+
+        logger.error("=" * 80)
+        logger.error("EXCEPTION DURING CODE EXECUTION")
+        logger.error("=" * 80)
+        logger.error(f"Exception Type: {type(e).__name__}")
+        logger.error(f"Exception Message: {str(e)}")
+        logger.error("=" * 80)
+        logger.error("Full Stack Trace:")
+        logger.error(error_details)
+        logger.error("=" * 80)
+
+        # Write detailed error with traceback to stderr
+        stderr_buffer.write(f"Error during execution: {type(e).__name__}(\"{str(e)}\")\n")
+        stderr_buffer.write("Traceback (most recent call last):\n")
+        stderr_buffer.write(error_details)
 
     return ExecutionResult(
         exit_code=exit_code, stdout=stdout_buffer.getvalue(), stderr=stderr_buffer.getvalue()
     )
+
+
+def validate_and_clean_code(code: str) -> tuple[str, str | None]:
+    """
+    Validate code syntax and detect common issues before execution.
+
+    Returns:
+        tuple: (cleaned_code, error_message)
+               If error_message is not None, the code has issues.
+    """
+    # Try to compile the code to check for syntax errors
+    try:
+        compile(code, '<validation>', 'exec')
+    except SyntaxError as e:
+        error_msg = "Syntax Error in generated code before execution:\n"
+        error_msg += f"  Line {e.lineno}: {e.text.strip() if e.text else 'N/A'}\n"
+        error_msg += f"  {' ' * (e.offset - 1) if e.offset else ''}^\n"
+        error_msg += f"  {e.msg}\n\n"
+        return code, error_msg
+
+    return code, None
 
 
 async def run_code(code: str, _locals: dict[str, Any] = None) -> tuple[str, dict[str, Any]]:
@@ -256,6 +324,13 @@ async def run_code(code: str, _locals: dict[str, Any] = None) -> tuple[str, dict
         + (wrapped_code if settings.features.local_sandbox else wrapped_code_with_call)
     )
 
+    # Validate code after wrapping (since LLM generates code with await statements)
+    _, validation_error = validate_and_clean_code(code_content)
+    if validation_error:
+        logger.error(f"Code validation failed:\n{validation_error}")
+        logger.error(f"Original code:\n{code}")
+        return validation_error, {}
+
     code_content_for_saving = (
         get_premable(is_local=settings.features.local_sandbox, current_date=tracker.current_date)
         + "\n"
@@ -276,6 +351,9 @@ async def run_code(code: str, _locals: dict[str, Any] = None) -> tuple[str, dict
         result = await run_local(code_content)
         if settings.advanced_features.benchmark == "appworld":
             process_python_file(file_path, tracker.task_id)
+
+        if result.exit_code != 0:
+            logger.error(f"Code execution failed:\n{result.stderr}")
         return result.stdout if result.exit_code == 0 else result.stderr, {}
     else:
         # Check for Podman socket first, fall back to Docker/Rancher Desktop

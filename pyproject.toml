@@ -7,7 +7,7 @@ license = "Apache-2.0"
 requires-python = ">=3.10, <3.14"
 dependencies = [
     "langchain",
-    "langchain-ibm",
+    "langchain-ibm~=0.3.19",
     "langchain-openai",
     "langchain-core",
     "aiohttp",
@@ -97,6 +97,7 @@ dev = [
     "cugaviz",
     "pre-commit>=4.3.0",
     "questionary>=2.1.1",
+    "rich>=14.2.0",
 ]
 groq = [
     "langchain-groq>=0.3.8",

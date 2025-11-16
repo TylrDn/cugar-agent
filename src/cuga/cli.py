@@ -12,8 +12,17 @@ from typing import List, Optional
 import psutil
 import typer
 from loguru import logger
+from rich.console import Console, Group
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
 
 from cuga.config import PACKAGE_ROOT, TRAJECTORY_DATA_DIR, get_user_data_path, settings
+from cuga.configurations.instructions_manager import InstructionsManager
+
+instructions_manager = InstructionsManager()
+
+console = Console()
 
 os.environ["DYNACONF_ADVANCED_FEATURES__TRACKER_ENABLED"] = "true"
 
@@ -69,13 +78,16 @@ def kill_processes_by_port(ports: List[int]):
         time.sleep(1)
 
 
-def wait_for_registry_server(port: int, max_retries: int = 120, retry_interval: float = 0.5):
+def wait_for_server(
+    port: int, server_name: str = "Server", max_retries: int = 120, retry_interval: float = 0.5
+):
     """
-    Wait for the registry server to be ready by pinging its health endpoint.
+    Wait for a server to be ready by pinging its health endpoint.
 
     Args:
-        port: The port number the registry server is running on
-        max_retries: Maximum number of retry attempts (default: 30)
+        port: The port number the server is running on
+        server_name: Name of the server for logging (default: "Server")
+        max_retries: Maximum number of retry attempts (default: 120)
         retry_interval: Time in seconds between retries (default: 0.5)
 
     Raises:
@@ -88,16 +100,31 @@ def wait_for_registry_server(port: int, max_retries: int = 120, retry_interval: 
             with httpx.Client(timeout=1.0) as client:
                 response = client.get(url)
                 if response.status_code == 200:
-                    logger.info("Registry server is ready!")
+                    logger.info(f"{server_name} is ready!")
                     return
         except (httpx.ConnectError, httpx.TimeoutException, httpx.RequestError):
             if attempt < max_retries - 1:
                 time.sleep(retry_interval)
             else:
                 raise TimeoutError(
-                    f"Registry server did not become ready after {max_retries * retry_interval:.1f} seconds. "
+                    f"{server_name} did not become ready after {max_retries * retry_interval:.1f} seconds. "
                     f"Please check if the server started correctly on port {port}."
                 )
+
+
+def wait_for_registry_server(port: int, max_retries: int = 120, retry_interval: float = 0.5):
+    """
+    Wait for the registry server to be ready by pinging its health endpoint.
+
+    Args:
+        port: The port number the registry server is running on
+        max_retries: Maximum number of retry attempts (default: 120)
+        retry_interval: Time in seconds between retries (default: 0.5)
+
+    Raises:
+        TimeoutError: If the server doesn't become ready within max_retries attempts
+    """
+    wait_for_server(port, "Registry server", max_retries, retry_interval)
 
 
 def kill_process_tree(pid):
@@ -448,7 +475,7 @@ def start(
 
             # Wait for registry to start
             logger.info("Waiting for registry to start...")
-            time.sleep(7)
+            wait_for_server(settings.server_ports.registry)
 
             # Double-check registry is still running after wait
             if registry_process.poll() is not None:
@@ -486,16 +513,24 @@ def start(
                 ]
 
             run_direct_service("demo", demo_command)
-
+            wait_for_server(settings.server_ports.demo)
             # Optionally start Chromium with MV3 extension if configured
 
             if direct_processes:
-                logger.info(
-                    "\n\033[1;36m┌──────────────────────────────────────────────────┐\n"
-                    "\033[1;36m│\033[0m \033[1;33mDemo services are running. Press Ctrl+C to stop\033[0m \033[1;36m │\033[0m\n"
-                    f"\033[1;36m│\033[0m \033[1;37mRegistry: http://localhost:{settings.server_ports.registry}                 \033[0m \033[1;36m│\033[0m\n"
-                    f"\033[1;36m│\033[0m \033[1;37mDemo: http://localhost:{settings.server_ports.demo}                     \033[0m \033[1;36m│\033[0m\n"
-                    "\033[1;36m└──────────────────────────────────────────────────┘\033[0m"
+                table = Table(show_header=False, box=None, padding=(0, 1))
+                table.add_column("Service", style="bold white")
+                table.add_column("URL", style="cyan")
+                table.add_row("Registry:", f"http://localhost:{settings.server_ports.registry}")
+                table.add_row("Demo:", f"http://localhost:{settings.server_ports.demo}")
+
+                console.print()
+                console.print(
+                    Panel(
+                        table,
+                        title="[bold yellow]Demo services are running. Press Ctrl+C to stop[/bold yellow]",
+                        border_style="cyan",
+                        padding=(1, 2),
+                    )
                 )
                 wait_for_direct_processes()
 
@@ -515,7 +550,9 @@ def start(
                 logger.info("✅ cuga_workspace directory created")
             else:
                 logger.info(f"✅ cuga_workspace directory found at {workspace_path}")
-
+            instructions_manager.set_instructions_from_one_file(
+                f"## Plan\n\nFor read and write operations, use the following path: {workspace_path}"
+            )
             # Clean up any existing processes on the ports we need
             logger.info("🧹 Checking for existing processes on required ports...")
             kill_processes_by_port(
@@ -523,6 +560,7 @@ def start(
                     1025,  # Email sink SMTP
                     8000,  # Email MCP SSE
                     8007,  # CRM API
+                    8112,  # Filesystem MCP SSE
                     settings.server_ports.registry,
                     settings.server_ports.demo,
                 ]
@@ -556,10 +594,25 @@ def start(
             logger.info("Email MCP server started")
             time.sleep(2)
 
+            # Start filesystem MCP server
+            run_direct_service(
+                "filesystem-server",
+                [
+                    "uvx",
+                    "--refresh",
+                    "--from",
+                    "./docs/examples/demo_apps/file_system",
+                    "filesystem-server",
+                    workspace_path,
+                ],
+            )
+            logger.info("Filesystem MCP server started")
+            time.sleep(2)
+
             # Start CRM API server
             run_direct_service(
-                "crm-api",
-                ["uvx", "--refresh", "--from", "./docs/examples/demo_apps/crm", "crm-api"],
+                "crm-server",
+                ["uvx", "--refresh", "--from", "./docs/examples/demo_apps/crm", "crm-server"],
             )
             logger.info("CRM API server started")
             time.sleep(10)
@@ -630,18 +683,65 @@ def start(
                     str(settings.server_ports.demo),
                 ]
 
-            run_direct_service("demo", demo_command)
+            demo_process = run_direct_service("demo", demo_command)
+
+            # Check if demo failed to start
+            if demo_process is None or demo_process.poll() is not None:
+                logger.error("Demo service failed to start. Exiting.")
+                stop_direct_processes()
+                raise typer.Exit(1)
+
+            # Wait for demo server to be ready (waiting for "Uvicorn running" message)
+            logger.info("Waiting for demo server to start...")
+            try:
+                wait_for_server(settings.server_ports.demo, "Demo server")
+            except TimeoutError as e:
+                logger.error(str(e))
+                stop_direct_processes()
+                raise typer.Exit(1)
+
+            # Double-check demo is still running after wait
+            if demo_process.poll() is not None:
+                logger.error("Demo service terminated during startup. Exiting.")
+                stop_direct_processes()
+                raise typer.Exit(1)
 
             if direct_processes:
-                logger.info(
-                    "\n\033[1;36m┌──────────────────────────────────────────────────┐\n"
-                    "\033[1;36m│\033[0m \033[1;33mCRM Demo services are running. Press Ctrl+C to stop\033[0m \033[1;36m│\033[0m\n"
-                    f"\033[1;36m│\033[0m \033[1;37mRegistry: http://localhost:{settings.server_ports.registry}                 \033[0m \033[1;36m│\033[0m\n"
-                    f"\033[1;36m│\033[0m \033[1;37mDemo: http://localhost:{settings.server_ports.demo}                     \033[0m \033[1;36m│\033[0m\n"
-                    "\033[1;36m│\033[0m \033[1;37mCRM API: http://localhost:8007                   \033[0m \033[1;36m│\033[0m\n"
-                    "\033[1;36m│\033[0m \033[1;37mEmail MCP: http://localhost:8000/sse             \033[0m \033[1;36m│\033[0m\n"
-                    "\033[1;36m│\033[0m \033[1;37mEmail Sink: smtp://localhost:1025                \033[0m \033[1;36m│\033[0m\n"
-                    "\033[1;36m└──────────────────────────────────────────────────┘\033[0m"
+                workspace_abs_path = os.path.abspath(workspace_path)
+
+                services_table = Table(show_header=False, box=None, padding=(0, 1))
+                services_table.add_column("Service", style="bold white", no_wrap=True)
+                services_table.add_column("URL", style="cyan")
+                services_table.add_row("• Email Sink", "smtp://localhost:1025")
+                services_table.add_row("• Email MCP Server", "http://localhost:8000/sse")
+                services_table.add_row("• Filesystem MCP Server", "http://localhost:8112/sse")
+                services_table.add_row("• CRM API Server", "http://localhost:8007")
+                services_table.add_row(
+                    "• Registry Server", f"http://localhost:{settings.server_ports.registry}"
+                )
+                services_table.add_row("• Demo Server", f"http://localhost:{settings.server_ports.demo}")
+
+                filesystem_text = Text()
+                filesystem_text.append("  Read/Write allowed in:\n", style="bold white")
+                filesystem_text.append(f"  {workspace_abs_path}", style="yellow")
+
+                content = Group(
+                    Text("📦 Started Services:", style="bold green"),
+                    services_table,
+                    Text(),
+                    Text("📁 Filesystem Access:", style="bold green"),
+                    filesystem_text,
+                )
+
+                console.print()
+                console.print(
+                    Panel(
+                        content,
+                        title="[bold yellow]✅ CRM Demo services are running. Press Ctrl+C to stop[/bold yellow]",
+                        border_style="cyan",
+                        padding=(1, 2),
+                        expand=False,
+                    )
                 )
                 wait_for_direct_processes()
 
@@ -670,8 +770,14 @@ def start(
             )
 
             if direct_processes:
-                logger.info(
-                    f"\n\033[1;36m┌────────────────────────────────────────┐\n\033[1;36m│\033[0m \033[1;33mRegistry service is running. Press Ctrl+C to stop\033[0m \033[1;36m│\033[0m\n\033[1;36m│\033[0m \033[1;37mRegistry: http://localhost:{settings.server_ports.registry}\033[0m         \033[1;36m│\033[0m\n\033[1;36m└────────────────────────────────────────┘\033[0m"
+                console.print()
+                console.print(
+                    Panel(
+                        f"[bold white]Registry:[/bold white] [cyan]http://localhost:{settings.server_ports.registry}[/cyan]",
+                        title="[bold yellow]Registry service is running. Press Ctrl+C to stop[/bold yellow]",
+                        border_style="cyan",
+                        padding=(1, 2),
+                    )
                 )
                 wait_for_direct_processes()
         except Exception as e:
@@ -702,12 +808,20 @@ def start(
             )
 
             if direct_processes:
-                logger.info(
-                    "\n\033[1;36m┌──────────────────────────────────────────────────┐\n"
-                    "\033[1;36m│\033[0m \033[1;33mAppWorld services are running. Press Ctrl+C to stop\033[0m \033[1;36m │\033[0m\n"
-                    f"\033[1;36m│\033[0m \033[1;37mEnvironment: http://localhost:{settings.server_ports.environment_url}              \033[0m \033[1;36m│\033[0m\n"
-                    f"\033[1;36m│\033[0m \033[1;37mAPI: http://localhost:{settings.server_ports.apis_url}                      \033[0m \033[1;36m│\033[0m\n"
-                    "\033[1;36m└──────────────────────────────────────────────────┘\033[0m"
+                table = Table(show_header=False, box=None, padding=(0, 1))
+                table.add_column("Service", style="bold white")
+                table.add_column("URL", style="cyan")
+                table.add_row("Environment:", f"http://localhost:{settings.server_ports.environment_url}")
+                table.add_row("API:", f"http://localhost:{settings.server_ports.apis_url}")
+
+                console.print()
+                console.print(
+                    Panel(
+                        table,
+                        title="[bold yellow]AppWorld services are running. Press Ctrl+C to stop[/bold yellow]",
+                        border_style="cyan",
+                        padding=(1, 2),
+                    )
                 )
                 wait_for_direct_processes()
 
@@ -738,11 +852,14 @@ def start(
             )
 
             if direct_processes:
-                logger.info(
-                    "\n\033[1;36m┌────────────────────────────────────────┐\n"
-                    "\033[1;36m│\033[0m \033[1;33mMemory service is running. Press Ctrl+C to stop\033[0m \033[1;36m│\033[0m\n"
-                    f"\033[1;36m│\033[0m \033[1;37mMemory: http://localhost:{str(settings.server_ports.memory)}\033[0m                    \033[1;36m│\033[0m\n"
-                    "\033[1;36m└────────────────────────────────────────┘\033[0m"
+                console.print()
+                console.print(
+                    Panel(
+                        f"[bold white]Memory:[/bold white] [cyan]http://localhost:{settings.server_ports.memory}[/cyan]",
+                        title="[bold yellow]Memory service is running. Press Ctrl+C to stop[/bold yellow]",
+                        border_style="cyan",
+                        padding=(1, 2),
+                    )
                 )
                 wait_for_direct_processes()
 
@@ -1069,8 +1186,14 @@ def evaluate(
         )
 
         if direct_processes:
-            logger.info(
-                f"\n\033[1;36m┌────────────────────────────────────────┐\n\033[1;36m│\033[0m \033[1;33mRegistry service is running. Press Ctrl+C to stop\033[0m \033[1;36m│\033[0m\n\033[1;36m│\033[0m \033[1;37mRegistry: http://localhost:{settings.server_ports.registry}\033[0m         \033[1;36m│\033[0m\n\033[1;36m└────────────────────────────────────────┘\033[0m"
+            console.print()
+            console.print(
+                Panel(
+                    f"[bold white]Registry:[/bold white] [cyan]http://localhost:{settings.server_ports.registry}[/cyan]",
+                    title="[bold yellow]Registry service is running. Press Ctrl+C to stop[/bold yellow]",
+                    border_style="cyan",
+                    padding=(1, 2),
+                )
             )
             # Wait for registry to start
             logger.info("Waiting for registry to start...")

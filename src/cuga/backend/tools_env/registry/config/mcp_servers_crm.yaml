@@ -4,12 +4,8 @@ services:
       description: This Digital Sales Skills API provides sales professionals with a unified interface to access territory accounts, retrieve client information from TPP, manage job roles, and synchronize contacts between Zoominfo and Salesloft—streamlining the process of managing customer relationships and sales data across multiple platforms.
 mcpServers:
   filesystem:
-    command: uv
-    args: ["run", "./docs/examples/demo_apps/file_system/main.py", "./cuga_workspace"]
-    transport: stdio  # Optional: auto-detected when command is present
+    url: http://localhost:8112/sse
     description: Standard file system operations for workspace management
-    env:
-      LOG_LEVEL: INFO  # Environment variables for STDIO transport
   email:
     url: http://localhost:8000/sse
     description: standard email server connected to the user's email.
