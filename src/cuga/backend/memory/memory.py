@@ -4,6 +4,7 @@ from typing import List, Dict, Optional, TYPE_CHECKING
 import os
 import json
 
+from cuga.config import settings
 
 if TYPE_CHECKING:
     from cuga.backend.cuga_graph.state.agent_state import AgentState
@@ -20,11 +21,15 @@ class Memory:
 
     def __init__(self, memory_config=None):
         if not self._initialized:
+            port = settings.server_ports.memory
             self.memory_client = V1MemoryClient(
-                base_url=os.environ.get("MEMORY_BASE_URL", "http://localhost:8888"), timeout=600
+                base_url=os.environ.get("MEMORY_BASE_URL", f"http://localhost:{port}"), timeout=600
             )
             self.user_id = None
             Memory._initialized = True
+
+    def health_check(self) -> bool:
+        return self.memory_client.health_check()
 
     def create_namespace(
         self,

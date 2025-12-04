@@ -102,7 +102,13 @@ class V1MemoryClient:
         except httpx.RequestError as e:
             raise APIRequestException(f"Memory v1 API request failed: {e}")
         except httpx.HTTPStatusError as e:
-            raise APIRequestException(f"Memory v1 API returned error status {e.response.status_code}: {e}")
+            try:
+                error_detail = e.response.json()
+            except ValueError:
+                error_detail = e.response.text
+            raise APIRequestException(
+                f"Memory v1 API returned error status {e.response.status_code}: {error_detail}"
+            )
         except (NamespaceNotFoundException, FactNotFoundException):
             # Re-raise these specific exceptions as-is
             raise

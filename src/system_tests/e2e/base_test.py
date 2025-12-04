@@ -1,23 +1,37 @@
 import asyncio
-import subprocess
-import traceback
-import shutil
-
-import httpx
 import json
 import os
+import shutil
 import signal
+import subprocess
+import traceback
 import unittest
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
+import httpx
 import psutil
 
-from cuga.backend.cuga_graph.nodes.human_in_the_loop.followup_model import ActionResponse
+from cuga.backend.cuga_graph.nodes.human_in_the_loop.followup_model import (
+    ActionResponse,
+)
 from cuga.config import settings
 
 # Define server and registry commands
 DEMO_COMMAND = ["uv", "run", "demo"]  # Assuming demo runs on port 7860 as per settings.toml
 REGISTRY_COMMAND = ["uv", "run", "registry"]  # Assuming default port for registry
 DIGITAL_SALES_MCP_COMMAND = ["uv", "run", "digital_sales_openapi"]  # Digital sales MCP server
+MEMORY_COMMAND = [
+    "uv",
+    "run",
+    "--group",
+    "memory",
+    "uvicorn",
+    "cuga.backend.memory.agentic_memory.main:app",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    str(settings.server_ports.memory),
+]
 
 # Server URL
 SERVER_URL = f"http://localhost:{settings.server_ports.demo}"
@@ -36,6 +50,7 @@ class BaseTestServerStream(unittest.IsolatedAsyncioTestCase):
 
     # Override this in subclasses to set specific environment variables
     test_env_vars = {}
+    enable_memory_service = False
 
     def _kill_process_by_port(self, port: int, service_name: str = "service") -> bool:
         """
@@ -141,9 +156,15 @@ class BaseTestServerStream(unittest.IsolatedAsyncioTestCase):
         self.demo_log_file = os.path.join(self.test_log_dir, "demo_server.log")
         self.registry_log_file = os.path.join(self.test_log_dir, "registry_server.log")
         self.digital_sales_mcp_log_file = os.path.join(self.test_log_dir, "digital_sales_mcp.log")
+        self.memory_log_file = (
+            os.path.join(self.test_log_dir, "memory_server.log") if self.enable_memory_service else None
+        )
 
         # Clear/truncate log files to ensure they start fresh for each test
-        for log_file in [self.demo_log_file, self.registry_log_file, self.digital_sales_mcp_log_file]:
+        log_files = [self.demo_log_file, self.registry_log_file, self.digital_sales_mcp_log_file]
+        if self.memory_log_file:
+            log_files.append(self.memory_log_file)
+        for log_file in log_files:
             with open(log_file, 'w') as f:
                 f.write('')  # Clear the file
             print(f"Cleared log file: {log_file}")
@@ -151,6 +172,8 @@ class BaseTestServerStream(unittest.IsolatedAsyncioTestCase):
         print(f"Demo server logs will be saved to: {self.demo_log_file}")
         print(f"Registry server logs will be saved to: {self.registry_log_file}")
         print(f"Digital sales MCP logs will be saved to: {self.digital_sales_mcp_log_file}")
+        if self.memory_log_file:
+            print(f"Memory server logs will be saved to: {self.memory_log_file}")
 
     async def asyncSetUp(self):
         """
@@ -161,9 +184,11 @@ class BaseTestServerStream(unittest.IsolatedAsyncioTestCase):
         self.demo_process = None
         self.registry_process = None
         self.digital_sales_mcp_process = None
+        self.memory_process = None
         self.demo_log_handle = None
         self.registry_log_handle = None
         self.digital_sales_mcp_log_handle = None
+        self.memory_log_handle = None
 
         # Create log files (this will also clear any existing ones)
         self._create_log_files()
@@ -173,6 +198,8 @@ class BaseTestServerStream(unittest.IsolatedAsyncioTestCase):
         self._kill_process_by_port(settings.server_ports.digital_sales_api, "digital sales MCP")
         self._kill_process_by_port(settings.server_ports.demo, "demo server")
         self._kill_process_by_port(settings.server_ports.registry, "registry")
+        if self.enable_memory_service:
+            self._kill_process_by_port(settings.server_ports.memory, "memory service")
         if hasattr(settings.server_ports, 'saved_flows'):
             self._kill_process_by_port(settings.server_ports.saved_flows, "saved flows")
 
@@ -195,6 +222,8 @@ class BaseTestServerStream(unittest.IsolatedAsyncioTestCase):
         self.digital_sales_mcp_log_handle = open(
             self.digital_sales_mcp_log_file, 'w', buffering=1
         )  # Line buffered
+        if self.enable_memory_service and self.memory_log_file:
+            self.memory_log_handle = open(self.memory_log_file, 'w', buffering=1)
         print("Starting digital sales MCP process...")
         self.digital_sales_mcp_process = subprocess.Popen(
             DIGITAL_SALES_MCP_COMMAND,
@@ -215,6 +244,20 @@ class BaseTestServerStream(unittest.IsolatedAsyncioTestCase):
         )
         print(f"Registry process started with PID: {self.registry_process.pid}")
 
+        if self.enable_memory_service:
+            print("Starting memory service process...")
+            self.memory_process = subprocess.Popen(
+                MEMORY_COMMAND,
+                stdout=self.memory_log_handle,
+                stderr=subprocess.STDOUT,  # Redirect stderr to stdout
+                text=True,
+                env=os.environ.copy(),
+                preexec_fn=os.setsid,
+            )
+            print(f"Memory service process started with PID: {self.memory_process.pid}")
+            # Ensure memory API is ready before services like the tracker try to use it
+            await self.wait_for_server(settings.server_ports.memory, max_retries=240)
+
         print("Starting demo server process...")
         self.demo_process = subprocess.Popen(
             DEMO_COMMAND,
@@ -229,6 +272,8 @@ class BaseTestServerStream(unittest.IsolatedAsyncioTestCase):
         # Give processes some time to start up
         print("Waiting for servers to initialize...")
         await self.wait_for_server(settings.server_ports.registry)
+        if self.enable_memory_service:
+            await self.wait_for_server(settings.server_ports.memory)
         await self.wait_for_server(settings.server_ports.demo)
         print("Server initialization wait complete.")
         print("--- Test environment setup complete ---")
@@ -299,6 +344,24 @@ class BaseTestServerStream(unittest.IsolatedAsyncioTestCase):
                     pass  # Process was already gone
             self.digital_sales_mcp_process = None
 
+        if self.memory_process:
+            try:
+                if self.memory_process.poll() is None:
+                    os.killpg(os.getpgid(self.memory_process.pid), signal.SIGTERM)
+                    self.memory_process.wait(timeout=5)
+                    print("Memory service process terminated gracefully.")
+                else:
+                    print("Memory service process already terminated.")
+            except (subprocess.TimeoutExpired, ProcessLookupError, OSError):
+                print("Memory service did not terminate gracefully or was already gone.")
+                try:
+                    if self.memory_process.poll() is None:
+                        os.killpg(os.getpgid(self.memory_process.pid), signal.SIGKILL)
+                        self.memory_process.wait()
+                except (ProcessLookupError, OSError):
+                    pass  # Process was already gone
+            self.memory_process = None
+
         # Close log file handles
         if self.demo_log_handle:
             self.demo_log_handle.close()
@@ -314,17 +377,25 @@ class BaseTestServerStream(unittest.IsolatedAsyncioTestCase):
             self.digital_sales_mcp_log_handle.close()
             self.digital_sales_mcp_log_handle = None
             print(f"Digital sales MCP log file closed: {self.digital_sales_mcp_log_file}")
+        if self.memory_log_handle:
+            self.memory_log_handle.close()
+            self.memory_log_handle = None
+            if self.memory_log_file:
+                print(f"Memory server log file closed: {self.memory_log_file}")
 
         # Then, kill any remaining processes by port as a backup
         print("Cleaning up any remaining processes on target ports...")
         demo_killed = self._kill_process_by_port(settings.server_ports.demo, "demo server")
         registry_killed = self._kill_process_by_port(settings.server_ports.registry, "registry")
+        memory_killed = False
+        if self.enable_memory_service:
+            memory_killed = self._kill_process_by_port(settings.server_ports.memory, "memory service")
 
         saved_flows_killed = False
         if hasattr(settings.server_ports, 'saved_flows'):
             saved_flows_killed = self._kill_process_by_port(settings.server_ports.saved_flows, "saved flows")
 
-        if not (demo_killed or registry_killed or saved_flows_killed):
+        if not (demo_killed or registry_killed or saved_flows_killed or memory_killed):
             print("No additional processes found on target ports.")
 
         print("All processes stopped.")
@@ -512,5 +583,7 @@ class BaseTestServerStream(unittest.IsolatedAsyncioTestCase):
             for keyword in expected_keywords:
                 self.assertIn(keyword.lower(), answer_str, f"Answer does not contain '{keyword}'.")
             print(f"Assertion Passed: Answer contains expected keywords: {expected_keywords}")
+
+        print("\n--- All assertions passed! ---")
 
         print("\n--- All assertions passed! ---")

@@ -33,6 +33,8 @@ TEST_EXIT_CODE=0
 # Helper function to run pytest and track failures
 run_pytest() {
     uv run pytest "$@" -v
+    local ec=$?
+    echo "pytest $* exited with code $ec"
     TEST_EXIT_CODE=$((TEST_EXIT_CODE | $?))
 }
 
@@ -41,6 +43,8 @@ run_pytest_with_memory() {
     # Sync memory dependency groups before running tests
     uv sync --group memory
     uv run pytest "$@" -v
+    local ec=$?
+    echo "pytest (with memory) $* exited with code $ec"
     TEST_EXIT_CODE=$((TEST_EXIT_CODE | $?))
 }
 
@@ -58,7 +62,7 @@ elif [ "$1" = "unit_tests" ]; then
     run_pytest ./src/cuga/backend/tools_env/code_sandbox/tests/
     run_pytest ./src/system_tests/unit/test_sandbox_async.py
     run_pytest ./src/cuga/backend/cuga_graph/nodes/api/code_agent/test_extract_codeblocks.py
-    run_pytest_with_memory ./src/system_tests/unit/test_memory.py
+    run_pytest_with_memory ./src/system_tests/unit/test_memory.py ./src/system_tests/unit/test_cli.py
 else
     echo "Running default tests (registry + variables manager + local sandbox + e2e without save_reuse and without sandbox docker)..."
     run_pytest ./src/cuga/backend/tools_env/registry/tests/
@@ -66,8 +70,10 @@ else
     run_pytest ./src/cuga/backend/tools_env/code_sandbox/tests/
     run_pytest ./src/system_tests/e2e/balanced_test.py ./src/system_tests/e2e/fast_test.py ./src/system_tests/e2e/test_runtime_tools.py
     run_pytest ./src/cuga/backend/cuga_graph/nodes/api/code_agent/test_extract_codeblocks.py
-    # run_pytest ./src/system_tests/e2e/load_test.py # SKIP for CI as it might take a lot of resources
-    run_pytest_with_memory ./src/system_tests/unit/test_memory.py ./src/system_tests/e2e/test_memory_integration.py
+    run_pytest_with_memory ./src/system_tests/unit/test_memory.py ./src/system_tests/unit/test_cli.py
+    run_pytest_with_memory ./src/system_tests/e2e/test_memory_integration.py
+    run_pytest_with_memory ./src/system_tests/e2e/balanced_test_memory.py
+
 fi
 
 echo "Tests completed with exit code: $TEST_EXIT_CODE"

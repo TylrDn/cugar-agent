@@ -72,6 +72,8 @@ class TipsExtractor:
         "PlanControllerAgent",
         "APIPlannerAgent",
         "APIShortlisterAgent",
+        "APICodePlannerAgent",
+        "CodeAgent",
     ]
 
     def __init__(self):
@@ -84,7 +86,11 @@ class TipsExtractor:
                 print(f"Warning: Could not initialize LLM: {e}")
 
     async def extract_tips_from_trajectory(
-        self, trajectory_text: str, trajectory_id: str, focus_on_failures: bool = True
+        self,
+        trajectory_text: str,
+        trajectory_id: str,
+        task_intent: str = "Unknown task",
+        focus_on_failures: bool = True,
     ) -> Dict[str, List[AgentTip]]:
         """Extract tips for each agent from trajectory analysis"""
 
@@ -100,7 +106,9 @@ class TipsExtractor:
         # Then generate tips for each agent
         tips_by_agent = {}
         for agent in self.AGENTS:
-            tips = await self._generate_tips_for_agent(agent, trajectory_text, failures, trajectory_id)
+            tips = await self._generate_tips_for_agent(
+                agent, trajectory_text, failures, trajectory_id, task_intent
+            )
             tips_by_agent[agent] = tips
 
         return tips_by_agent
@@ -179,7 +187,12 @@ LAST API PLANNER SECTION:
             return []
 
     async def _generate_tips_for_agent(
-        self, agent_name: str, trajectory_text: str, failures: List[FailureAnalysis], trajectory_id: str
+        self,
+        agent_name: str,
+        trajectory_text: str,
+        failures: List[FailureAnalysis],
+        trajectory_id: str,
+        task_intent: str = "Unknown task",
     ) -> List[AgentTip]:
         """Generate specific tips for an agent based on trajectory analysis"""
 
@@ -198,9 +211,9 @@ LAST API PLANNER SECTION:
             elif f.failing_agent == agent_name:
                 failures_text.append(f"- Direct failure: {f.failure_description}")
 
-        failures_text_joined = {
+        failures_text_joined = (
             chr(10).join(failures_text) if failures_text else 'No specific failures identified'
-        }
+        )
         # Extract application and task info from trajectory
         app_context = self._extract_context(trajectory_text)
 
@@ -210,6 +223,8 @@ LAST API PLANNER SECTION:
             "PlanControllerAgent": "Manages API execution and error handling across apps shortlisted by the TaskAnalyzerAgent",
             "APIPlannerAgent": "Plans API calls and data flow for a specific app",
             "APIShortlisterAgent": "Selects relevant APIs from available APIs for accomplishing the task. Critical for ensuring all necessary APIs are included.",
+            "APICodePlannerAgent": "Responsible to translate a user's goal into a clear, narrative-style, step-by-step plan, describing *how* to achieve the goal using a given set of tool schemas (API definitions). This plan will guide a Coding Agent to write the actual code.",
+            "CodeAgent": "AI coding agent specializing in generating Python code for API orchestration. Its primary function is to translate a detailed natural language **plan** into executable Python code that interacts with a predefined set of APIs using a specific helper function",
         }
         max_tips = tips_extractor_config.get("max_tips_per_agent", "1")
 
@@ -237,12 +252,18 @@ LAST API PLANNER SECTION:
             tips_prompt_file, template_format="jinja2", encoding='utf-8'
         )
         try:
+            agent_role = agent_descriptions.get(agent_name, "Unknown")
+            application = app_context.get("application", "general")
+            task_category = app_context.get("task_category", "general")
+            task_description = app_context.get("task_description", "")
             prompt_input = {
                 "agent_name": agent_name,
                 "agent_specific_context": agent_specific_context,
-                "agent_descriptions": agent_descriptions,
+                "agent_role": agent_role,
+                "application": application,
+                "task_category": task_category,
+                "task_description": task_description,
                 "failures_text": failures_text_joined,
-                "context": app_context,
                 "trajectory_snippet": trajectory_text,
                 "max_tips": max_tips,
             }
@@ -273,7 +294,7 @@ LAST API PLANNER SECTION:
                     agent_name=agent_name,
                     task_status=tip_data.get('task_status', 'success'),
                     failure_reason=tip_data.get('failure_reason', 'completed'),
-                    intent=tip_data.get('intent', ""),
+                    intent=task_intent,  # Use the task_intent from IR file instead of LLM response
                     tip_type=tip_data.get("tip_type", "error_prevention"),
                     tip_content=tip_data.get("tip_content", ""),
                     rationale=tip_data.get("rationale", ""),

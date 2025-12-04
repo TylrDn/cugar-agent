@@ -559,16 +559,6 @@ class ActivityTracker(object):
         except Exception:
             pass
 
-        if settings.advanced_features.enable_memory:
-            from cuga.backend.memory.agentic_memory.utils.prompts import prompts
-
-            self.memory.add_step(
-                namespace_id='memory',
-                run_id=self.experiment_folder,
-                step=step.model_dump(),
-                prompt=prompts[step.name],
-            )
-
         # Attach any collected prompts to this step so they are persisted
         if getattr(self, "prompts", None):
             try:
@@ -650,6 +640,19 @@ class ActivityTracker(object):
                         annotation_title="Image",
                         annotation_content=f"{step.image_before}",
                     )
+
+        if settings.advanced_features.enable_memory:
+            from cuga.backend.memory.agentic_memory.utils.prompts import prompts
+
+            # Include intent in step metadata so it's available during tip extraction
+            step_data = step.model_dump()
+            step_data['intent'] = self.intent  # Add the user's task intent
+            self.memory.add_step(
+                namespace_id='memory',
+                run_id=self.experiment_folder,
+                step=step_data,
+                prompt=prompts[step.name],
+            )
         step.prompts = copy.deepcopy(self.prompts)
         self.prompts = []
         self.steps.append(step)

@@ -14,6 +14,7 @@ from cuga.config import settings
 from cuga.backend.tools_env.code_sandbox.sandbox import run_code
 from loguru import logger
 from cuga.configurations.instructions_manager import InstructionsManager
+from cuga.backend.memory.agentic_memory.utils.memory_tips_formatted import get_formatted_tips
 
 instructions_manager = InstructionsManager()
 llm_manager = LLMManager()
@@ -155,6 +156,13 @@ class CodeAgent(BaseAgent):
             else "N/A"
         )
 
+        # memory integration
+        rtrvd_tips_formatted = None
+        if settings.advanced_features.enable_memory:
+            rtrvd_tips_formatted = get_formatted_tips(
+                namespace_id="memory", agent_id='CodeAgent', query=input_variables.coder_task, limit=3
+            )
+
         # Invoke the chain to get code
         response = await self.chain.ainvoke(
             input={
@@ -166,6 +174,7 @@ class CodeAgent(BaseAgent):
                 "api_shortlister_planner_filtered_apis": input_variables.api_shortlister_planner_filtered_apis,
                 "current_datetime": input_variables.current_datetime,
                 "instructions": self.instructions if self.instructions else "",
+                "memory": rtrvd_tips_formatted,
             }
         )
         logger.debug(f"Response: {response.content}")

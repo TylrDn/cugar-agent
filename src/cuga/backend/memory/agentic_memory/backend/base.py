@@ -93,40 +93,68 @@ class BaseMemoryBackend(ABC):
             db_manager.end_run(namespace_id=namespace_id, run_id=run_id)
 
     async def analyze_run(self, namespace_id: str, run_id: str):
-        run = self.get_run(namespace_id, run_id)
-        trajectory = {"steps": [step.metadata for step in run.steps]}
-        tips_by_agent, trajectory_id = await extract_cuga_tips_from_data(trajectory)
-        total_tips = 0
-        for agent, tips in tips_by_agent.items():
-            for tip in tips:
-                tip_data = {
-                    "intent": tip.intent,
-                    "task_status": tip.task_status,
-                    "failure_reason": tip.failure_reason,
-                    "tip": tip.tip_content,
-                }
+        try:
+            run = self.get_run(namespace_id, run_id)
 
-                # Store in memory using the existing store_facts function
-                self.create_and_store_fact(
-                    namespace_id,
-                    Fact(
-                        content=json.dumps(tip_data, indent=4),
-                        metadata={
-                            "type": "tips",
-                            "user_id": "100",  # tips are global
-                            "tip_id": tip.tip_id,
-                            "agent": agent,
-                            "specific_checks": tip.specific_checks,
-                            "intended_use": tip.intended_use,
-                            "priority": tip.priority,
-                            "trajectory_id": trajectory_id,
-                            "tip_type": tip.tip_type,
-                            "rationale": tip.rationale,
-                            "application": tip.application,
-                            "task_category": tip.task_category,
-                        },
-                    ),
+            # Extract intent from the first step (all steps should have the same intent for a task)
+            intent = "Unknown task"
+            if run.steps and len(run.steps) > 0:
+                first_step = run.steps[0].metadata.get('step', {})
+                intent = first_step.get('intent', "Unknown task")
+                logger.info(f"Extracted intent from step metadata: {intent[:100]}")
+
+            trajectory = {"steps": [step.metadata['step'] for step in run.steps], "intent": intent}
+            tips_by_agent, trajectory_id = await extract_cuga_tips_from_data(trajectory)
+
+            # Check if extraction returned an error
+            if isinstance(tips_by_agent, dict) and "error" in tips_by_agent:
+                logger.error(
+                    f"Tips extraction failed for run {run_id} in namespace {namespace_id}: "
+                    f"{tips_by_agent['error']}"
                 )
-                total_tips += 1
+                return  # Exit gracefully without storing tips
 
-        logger.info(f'number of tips stored: {total_tips}')
+            # Check for other non-error responses that don't contain tips
+            if isinstance(tips_by_agent, dict) and "message" in tips_by_agent:
+                logger.warning(
+                    f"Tips extraction returned message for run {run_id}: {tips_by_agent['message']}"
+                )
+                return
+
+            total_tips = 0
+            for agent, tips in tips_by_agent.items():
+                for tip in tips:
+                    tip_data = {
+                        "intent": tip.intent,
+                        "task_status": tip.task_status,
+                        "failure_reason": tip.failure_reason,
+                        "tip": tip.tip_content,
+                    }
+
+                    # Store in memory using the existing store_facts function
+                    self.create_and_store_fact(
+                        namespace_id,
+                        Fact(
+                            content=json.dumps(tip_data, indent=4),
+                            metadata={
+                                "type": "tips",
+                                "user_id": "100",  # tips are global
+                                "tip_id": tip.tip_id,
+                                "agent": agent,
+                                "specific_checks": tip.specific_checks,
+                                "intended_use": tip.intended_use,
+                                "priority": tip.priority,
+                                "trajectory_id": trajectory_id,
+                                "tip_type": tip.tip_type,
+                                "rationale": tip.rationale,
+                                "application": tip.application,
+                                "task_category": tip.task_category,
+                            },
+                        ),
+                    )
+                    total_tips += 1
+
+            logger.info(f'number of tips stored: {total_tips}')
+        except Exception as e:
+            logger.error(f"Failed to analyze run {run_id} in namespace {namespace_id}: {e}", exc_info=True)
+            # Don't re-raise - this runs in background, we want graceful degradation

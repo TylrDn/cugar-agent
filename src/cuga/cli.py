@@ -6,9 +6,9 @@ import subprocess
 import sys
 import threading
 import time
-import httpx
 from typing import List, Optional
 
+import httpx
 import psutil
 import typer
 from loguru import logger
@@ -17,6 +17,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
+from cuga.backend.memory.cli import memory_app
 from cuga.config import PACKAGE_ROOT, TRAJECTORY_DATA_DIR, get_user_data_path, settings
 from cuga.configurations.instructions_manager import InstructionsManager
 
@@ -30,6 +31,7 @@ app = typer.Typer(
     help="Cuga CLI for managing services with direct execution",
     short_help="Service management tool for Cuga components",
 )
+app.add_typer(memory_app, name="memory")
 
 # Global variables to track running direct processes (registry/demo)
 direct_processes = {}
@@ -357,6 +359,22 @@ def wait_for_direct_processes():
         stop_direct_processes()
 
 
+def create_demo_crm_sample_files(workspace_path: str) -> List[str]:
+    """Create sample CRM demo files in the provided workspace path."""
+    os.makedirs(workspace_path, exist_ok=True)
+    sample_contents = {
+        "cities.txt": ["Barcelona", "Bangalore", "Boulder"],
+        "company.txt": ["Bangalore"],
+    }
+    created_files: List[str] = []
+    for filename, entries in sample_contents.items():
+        file_path = os.path.join(workspace_path, filename)
+        with open(file_path, "w", encoding="utf-8") as file_handle:
+            file_handle.write("\n".join(entries) + "\n")
+        created_files.append(file_path)
+    return created_files
+
+
 @app.callback()
 def callback(
     verbose: bool = typer.Option(
@@ -420,6 +438,11 @@ def start(
         "--read-only",
         help="For demo_crm: Start filesystem server in read-only mode (only read_text_file tool exposed)",
     ),
+    sample_memory_data: bool = typer.Option(
+        False,
+        "--sample-memory-data/--no-sample-memory-data",
+        help="For demo_crm: Generate sample workspace files (cities.txt, company.txt) in cuga_workspace",
+    ),
 ):
     """
     Start the specified service.
@@ -436,6 +459,7 @@ def start(
       cuga start demo --sandbox      # Start with remote sandbox (Docker/Podman)
       cuga start demo_crm            # Start CRM demo with all required services
       cuga start demo_crm --read-only  # Start CRM demo with read-only filesystem
+      cuga start demo_crm --sample-memory-data  # Seed workspace with sample memory data before CRM demo
       cuga start registry            # Start registry only
       cuga start appworld            # Start AppWorld servers
       cuga start memory              # Start memory service
@@ -556,6 +580,12 @@ def start(
                 logger.info("✅ cuga_workspace directory created")
             else:
                 logger.info(f"✅ cuga_workspace directory found at {workspace_path}")
+
+            if sample_memory_data:
+                logger.info("📝 Generating sample CRM workspace files...")
+                created_files = create_demo_crm_sample_files(workspace_path)
+                for file_path in created_files:
+                    logger.info(f"   • {file_path}")
 
             # Set hardcoded policies for demo_crm
             policies_content = "## Plan\nwhen using filesystem use the `./cuga_workspace` dir only"

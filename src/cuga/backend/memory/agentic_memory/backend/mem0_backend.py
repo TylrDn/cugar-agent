@@ -8,6 +8,7 @@ from cuga.backend.memory.agentic_memory.backend.base import BaseMemoryBackend
 from cuga.backend.memory.agentic_memory.db.sqlite_manager import SQLiteManager
 from cuga.backend.memory.agentic_memory.config import get_config
 from cuga.backend.memory.agentic_memory.schema import Fact, RecordedFact, Message, Run, Namespace
+from cuga.backend.memory.agentic_memory.utils.utils import clean_llm_response
 from fastapi import HTTPException
 from mem0 import Memory
 from mem0.configs.base import MemoryConfig
@@ -171,8 +172,12 @@ class Mem0MemoryBackend(BaseMemoryBackend):
         ]
         for attempt in range(3):
             extraction = llm.generate_response(messages)
+
+            # Clean LLM response (removes markdown code blocks and thinking tags)
+            cleaned_extraction = clean_llm_response(extraction)
+
             try:
-                parsed_extraction = json.loads(extraction)
+                parsed_extraction = json.loads(cleaned_extraction)
             except JSONDecodeError:
                 continue
             else:

@@ -1,9 +1,9 @@
 Generate specific, actionable tips for {{agent_name}} based on this trajectory analysis.
 
-AGENT ROLE: {{agent_descriptions.get(agent_name, 'Unknown')}}
-APPLICATION: {{context.get('application', 'general')}}
-TASK CATEGORY: {{context.get('task_category', 'general')}}
-TASK DESCRIPTION: {{context.get('task_description', "")}} 
+AGENT ROLE: {{agent_role}}
+APPLICATION: {{application}}
+TASK CATEGORY: {{task_category}}
+TASK DESCRIPTION: {{task_description}} 
 
 {{agent_specific_context}}
 
@@ -15,12 +15,10 @@ TRAJECTORY CONTEXT:
 
 If there are failures, especially in the output of the FinalAnswerAgent or in the preceding step, generate specific tips that would help this agent avoid similar failures in the future.
 **IMPORTANT**
-1. Keep in mind the description of the agent. The tip should be relevant to the role they perform. If agent is responsible for shortlisting applications, tip should be related to what kind of apllications to shortlist only.
-2. **Generate none or at maximum {{max_tips}} tip** if it is truly relevant and non-obvious. If there are no meaningful improvements to suggest, return an empty tips array.
+1. Keep in mind the description of the agent. The tip should be relevant to the role they perform. If agent is responsible for shortlisting applications, tip should be related to what kind of applications to shortlist only.
+2. **Generate at maximum {{max_tips}} tip** if it is truly relevant. If there are no meaningful improvements to suggest, return an empty tips array.
 3. **DO NOT** generate recommendation/tips that includes asking user for more input. That is never the option.
-4. ** DO NOT** include very generic or intuitive recommendation/tips. 
-5. ** DO NOT** include any agent name in the recommendation/tips.
-6. Keep tips very precise and short.
+4. If there were any failures, the tip should directly memtion how such failure can be avoided.
 
 
 Return JSON (can have 0 or more tips):
@@ -28,9 +26,8 @@ Return JSON (can have 0 or more tips):
 {
     "tips": [
         {
-            "intent": "actual `TASK DESCRIPTION` as it is without any modification"
-            "task_status": "Completed or Failed. If the task is in progress or no hints of completion, mark that as Failed."
-            "failure_reason": "failure reason if any"
+            "task_status": "Completed or Failed. If the task is in progress or no hints of completion, mark that as Failed.",
+            "failure_reason": "failure reason if any",
             "tip_type": "error_prevention|optimization|validation|recovery",
             "tip_content": "Short, precise and direct recommendation/tips for this task aligned with agent's role",
             "rationale": "Why this tip prevents failures",
