@@ -833,6 +833,7 @@ class ActivityTracker(object):
         api_calls: Optional[int] = None,
         total_llm_calls: Optional[int] = None,
         total_tokens: Optional[int] = None,
+        total_cost: Optional[float] = None,
     ) -> str:
         """
         Mark a task as finished and update result files.
@@ -870,6 +871,7 @@ class ActivityTracker(object):
             "total_llm_calls": total_llm_calls,
             "total_tokens": total_tokens,
             "api_calls": api_calls,
+            "total_cost": total_cost,
         }
 
         # Update result files only if tracker is enabled
@@ -912,6 +914,7 @@ class ActivityTracker(object):
             'total_llm_calls',
             'total_tokens',
             'api_calls',
+            'total_cost',
         ]
 
         if not self.tasks:
