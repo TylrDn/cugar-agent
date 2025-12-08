@@ -14,7 +14,6 @@ from cuga.config import settings
 from cuga.backend.tools_env.code_sandbox.sandbox import run_code
 from loguru import logger
 from cuga.configurations.instructions_manager import InstructionsManager
-from cuga.backend.memory.agentic_memory.utils.memory_tips_formatted import get_formatted_tips
 
 instructions_manager = InstructionsManager()
 llm_manager = LLMManager()
@@ -159,6 +158,8 @@ class CodeAgent(BaseAgent):
         # memory integration
         rtrvd_tips_formatted = None
         if settings.advanced_features.enable_memory:
+            from cuga.backend.memory.agentic_memory.utils.memory_tips_formatted import get_formatted_tips
+
             rtrvd_tips_formatted = get_formatted_tips(
                 namespace_id="memory", agent_id='CodeAgent', query=input_variables.coder_task, limit=3
             )

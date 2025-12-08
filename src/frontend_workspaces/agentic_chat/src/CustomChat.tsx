@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Send, RotateCcw, Bot, User, FileText } from "lucide-react";
+import { Send, RotateCcw, Bot, User, FileText, Database, Code, Terminal, Cpu, Globe, Settings } from "lucide-react";
 import CardManager from "./CardManager";
 import { StopButton } from "./floating/stop_button";
 import { fetchStreamingData } from "./StreamingWorkflow";
@@ -24,26 +24,16 @@ interface ChatInstance {
   on?: (options: { type: string; handler: (event: any) => void }) => void;
 }
 
-const WELCOME_TEXT = `<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; padding: 16px; color: white; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); margin: 16px 0;">
-  <div style="display: flex; align-items: center; gap: 12px;">
-    <div style="flex: 1;">
-      <h2 style="font-size: 1.2rem; font-weight: 700; margin: 0 0 4px 0;">👋 I'm CUGA</h2>
-      <p style="font-size: 0.9rem; margin: 0; opacity: 0.9;">Your Digital Agent</p>
-    </div>
-    <div style="text-align: right;">
-      <p style="margin: 0; font-size: 0.8rem; font-weight: 500; opacity: 0.9;">✨ Just ask!</p>
-    </div>
-  </div>
-</div>`;
-
 interface CustomChatProps {
   onVariablesUpdate?: (variables: Record<string, any>, history: Array<any>) => void;
   onFileAutocompleteOpen?: () => void;
   onFileHover?: (filePath: string | null) => void;
   onMessageSent?: (message: string) => void;
+  onChatStarted?: (started: boolean) => void;
+  initialChatStarted?: boolean;
 }
 
-export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHover, onMessageSent }: CustomChatProps) {
+export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHover, onMessageSent, onChatStarted, initialChatStarted = false }: CustomChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -60,6 +50,14 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
   const threadIdRef = useRef<string>("");
   const [showExampleUtterances, setShowExampleUtterances] = useState(true);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [hasStartedChat, setHasStartedChat] = useState(initialChatStarted);
+
+  // Notify parent when chat starts
+  useEffect(() => {
+    if (onChatStarted) {
+      onChatStarted(hasStartedChat);
+    }
+  }, [hasStartedChat, onChatStarted]);
 
   const exampleUtterances = [
     "from contacts.txt show me which users belong to the crm system",
@@ -80,7 +78,7 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
   const createChatInstance = useCallback((): ChatInstance => {
     return {
       messaging: {
-        addMessage: async (message: any) => {
+        addMessage: async () => {
           // Handle message addition if needed
         },
       },
@@ -123,19 +121,7 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Show welcome message on mount
-  useEffect(() => {
-    if (messages.length === 0) {
-      setMessages([
-        {
-          id: "welcome",
-          text: WELCOME_TEXT,
-          isUser: false,
-          timestamp: Date.now(),
-        },
-      ]);
-    }
-  }, []);
+  // Remove the auto-welcome message effect since we have a dedicated welcome screen
 
   // Load workspace files using shared service with enforced throttling
   useEffect(() => {
@@ -230,6 +216,9 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
 
     setMessages((prev) => [...prev, userMessage]);
 
+    // Mark that chat has started
+    setHasStartedChat(true);
+
     // Notify parent component that a message was sent
     if (onMessageSent) {
       onMessageSent(processedText);
@@ -286,7 +275,7 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
     threadIdRef.current = newThreadId;
     
     try {
-      const response = await fetch('/reset', {
+      await fetch('/reset', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -297,15 +286,9 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
       console.error("Error calling reset endpoint:", error);
     }
 
-    // Clear messages and show welcome
-    setMessages([
-      {
-        id: "welcome",
-        text: WELCOME_TEXT,
-        isUser: false,
-        timestamp: Date.now(),
-      },
-    ]);
+    // Clear messages and reset to welcome screen
+    setMessages([]);
+    setHasStartedChat(false);
     setIsProcessing(false);
     setInputValue("");
     setShowExampleUtterances(true);
@@ -543,11 +526,17 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
     setInputValue(utterance);
     setShowExampleUtterances(false);
     
-    // Focus the input
+    // Focus the input and scroll it into view
     inputRef.current.focus();
+    inputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     
     // Trigger input handler to update state
     handleContentEditableInput({ currentTarget: inputRef.current } as any);
+    
+    // Small delay to ensure the input is visible, then scroll to it
+    setTimeout(() => {
+      inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
   };
 
   const handleInputFocus = () => {
@@ -656,141 +645,470 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
 
   return (
     <div className="custom-chat-container">
-      <div className="custom-chat-header">
-        <div className="chat-header-left">
-          <Bot size={20} />
-          <span className="chat-header-title">CUGA Agent</span>
-        </div>
-        <button
-          className="chat-restart-btn"
-          onClick={handleRestart}
-          title="Restart conversation"
-        >
-          <RotateCcw size={16} />
-          <span>Restart</span>
-        </button>
-      </div>
-
-      <div className="custom-chat-messages">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`message ${message.isUser ? "message-user" : "message-bot"}`}
+      {hasStartedChat && (
+        <div className="custom-chat-header">
+          <div className="chat-header-left">
+            <Bot size={20} />
+            <span className="chat-header-title">CUGA Agent</span>
+          </div>
+          <button
+            className="chat-restart-btn"
+            onClick={handleRestart}
+            title="Restart conversation"
           >
-            <div className="message-avatar">
-              {message.isUser ? (
-                <User size={18} />
+            <RotateCcw size={16} />
+            <span>Restart</span>
+          </button>
+        </div>
+      )}
+
+      {!hasStartedChat ? (
+        <div className="welcome-screen">
+          {/* Main Navigation Header - Welcome Mode Only */}
+          <header className="main-nav-header">
+            <div className="nav-container">
+              <div className="nav-brand">
+                <img
+                  src="https://avatars.githubusercontent.com/u/230847519?s=100&v=4"
+                  alt="CUGA"
+                  className="nav-logo"
+                />
+                <span className="nav-brand-text">CUGA Agent</span>
+              </div>
+              <nav className="nav-links">
+                <a href="https://docs.cuga.dev" target="_blank" rel="noopener noreferrer" className="nav-link">
+                  Docs
+                </a>
+                <a href="https://cuga.dev" target="_blank" rel="noopener noreferrer" className="nav-link">
+                  Site
+                </a>
+                <a href="https://github.com/cuga-project/cuga-agent" target="_blank" rel="noopener noreferrer" className="nav-link">
+                  GitHub
+                </a>
+                <a href="https://discord.gg/UhNVTggG" target="_blank" rel="noopener noreferrer" className="nav-link">
+                  Community
+                </a>
+              </nav>
+            </div>
+          </header>
+
+          <div className="welcome-top-section">
+            <div className="welcome-left-column">
+            <div className="welcome-content">
+              <div className="welcome-header">
+                <h1 className="welcome-title">Experience CUGA Agent</h1>
+                <p className="mission-text">
+                  Intelligent task automation through multi-agent orchestration, API integration, and code generation on enterprise demo applications.
+                </p>
+              </div>
+
+              <div className="demo-apps-section">
+                <div className="section-header">
+                  <h2 className="section-title">Connected Apps and Tools for This Demo</h2>
+                </div>
+
+                <div className="demo-apps-grid">
+                  <div className="demo-app-card crm-card">
+                    <div className="demo-app-icon">
+                      <Database size={32} />
+                    </div>
+                    <div className="demo-app-card-content">
+                      <h3 className="demo-app-name">CRM System</h3>
+                      <p className="demo-app-tools">20 Tools Available</p>
+                      <div className="demo-app-examples">
+                        <span className="demo-app-tag">Get Accounts</span>
+                        <span className="demo-app-tag">Create Contact</span>
+                        <span className="demo-app-tag">Search Deals</span>
+                        <span className="demo-app-tag">+17 more</span>
+                      </div>
+                      <p className="demo-app-description">
+                        Manage customers, accounts, contacts, and deals with full CRUD operations
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="demo-app-card filesystem-card">
+                    <div className="demo-app-icon">
+                      <FileText size={32} />
+                    </div>
+                    <div className="demo-app-card-content">
+                      <h3 className="demo-app-name">Workspace Files</h3>
+                      <p className="demo-app-tools">File Management</p>
+                      <div className="demo-app-examples">
+                        <span className="demo-app-tag">Read File</span>
+                        <span className="demo-app-tag">Write File</span>
+                        <span className="demo-app-tag">List Directory</span>
+                      </div>
+                      <p className="demo-app-description">
+                        Read, write, and manage files in the cuga_workspace directory
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="demo-app-card email-card">
+                    <div className="demo-app-icon">
+                      <Terminal size={32} />
+                    </div>
+                    <div className="demo-app-card-content">
+                      <h3 className="demo-app-name">Email Service</h3>
+                      <p className="demo-app-tools">Email Operations</p>
+                      <div className="demo-app-examples">
+                        <span className="demo-app-tag">Send Email</span>
+                        <span className="demo-app-tag">List Emails</span>
+                        <span className="demo-app-tag">Search</span>
+                      </div>
+                      <p className="demo-app-description">
+                        Send and manage emails with full inbox integration
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="welcome-right-column">
+            <div className="get-started-container">
+              <div className="github-section-right">
+                  <a
+                    href="https://github.com/cuga-project/cuga-agent"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="github-button-sidebar"
+                  >
+                    🌟 Star us on GitHub
+                  </a>
+              </div>
+
+              <div className="get-started-section">
+                <div className="section-header">
+                  <h2 className="section-title">Get Started</h2>
+                  <p className="section-subtitle">Try one of these examples or type your own request</p>
+                </div>
+
+                {showExampleUtterances && !inputValue.trim() && (
+                  <div className="example-utterances-widget">
+                    <div className="example-utterances-list">
+                      {exampleUtterances.map((utterance, index) => (
+                        <button
+                          key={index}
+                          className="example-utterance-chip"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleExampleClick(utterance);
+                          }}
+                          type="button"
+                        >
+                          {utterance}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="welcome-input-wrapper">
+                {!hasStartedChat && (
+                  <div className="welcome-logo input-logo">
+                    <img
+                      src="https://avatars.githubusercontent.com/u/230847519?s=100&v=4"
+                      alt="CUGA Logo"
+                      className="welcome-logo-image"
+                    />
+                  </div>
+                )}
+                <div className="chat-input-container-welcome">
+                  <div className="textarea-wrapper">
+                    <div
+                      ref={inputRef}
+                      id="main-input_field"
+                      className="chat-input"
+                      contentEditable={!isProcessing}
+                      onInput={handleContentEditableInput}
+                      onClick={handleContentEditableClick}
+                      onKeyDown={handleKeyPress}
+                      onPaste={handlePaste}
+                      onFocus={handleInputFocus}
+                      onBlur={handleInputBlur}
+                      data-placeholder="Type your message... (use @ for file autocomplete - add multiple files)"
+                      style={{
+                        minHeight: "44px",
+                        maxHeight: "120px",
+                        overflowY: "auto",
+                      }}
+                    />
+                  </div>
+                  <button
+                    className="chat-send-btn"
+                    onClick={handleSend}
+                    disabled={!inputValue.trim() || isProcessing}
+                    title="Send message"
+                  >
+                    <Send size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          </div>
+
+          <div className="welcome-features-section">
+            <div className="section-header">
+              <h2 className="section-title">Key Capabilities</h2>
+              <p className="section-subtitle">Powerful features that make CUGA an intelligent automation platform</p>
+            </div>
+
+            <div className="welcome-features">
+              <div className="feature-card">
+                <div className="feature-icon multi-agent-icon">
+                  <Bot size={32} />
+                </div>
+                <h3 className="feature-title">Multi-Agent System</h3>
+                <p className="feature-description">Specialized agents work together for planning, coding & execution</p>
+              </div>
+
+              <div className="feature-card">
+                <div className="feature-icon code-exec-icon">
+                  <Terminal size={32} />
+                </div>
+                <h3 className="feature-title">Code Execution</h3>
+                <p className="feature-description">Write and run Python code in secure sandbox</p>
+              </div>
+
+              <div className="feature-card">
+                <div className="feature-icon api-icon">
+                  <Code size={32} />
+                </div>
+                <h3 className="feature-title">API Integration</h3>
+                <p className="feature-description">Connect any OpenAPI or MCP server instantly</p>
+              </div>
+
+              <div className="feature-card">
+                <div className="feature-icon memory-icon">
+                  <Database size={32} />
+                </div>
+                <h3 className="feature-title">Human in the Loop</h3>
+                <p className="feature-description">Followup questions on variables in memory and previous conversations</p>
+              </div>
+
+              <div className="feature-card">
+                <div className="feature-icon model-flex-icon">
+                  <Cpu size={32} />
+                </div>
+                <h3 className="feature-title">Model Flexibility</h3>
+                <p className="feature-description">Works with small models and open source models like GPT OSS 120B and Llama 4</p>
+              </div>
+
+              <div className="feature-card">
+                <div className="feature-icon web-api-icon">
+                  <Globe size={32} />
+                </div>
+                <h3 className="feature-title">Web & API Tasks</h3>
+                <p className="feature-description">Executes both web and API tasks seamlessly</p>
+              </div>
+
+              <div className="feature-card">
+                <div className="feature-icon reasoning-icon">
+                  <Settings size={32} />
+                </div>
+                <h3 className="feature-title">Reasoning Modes</h3>
+                <p className="feature-description">Configurable reasoning modes: lite, balanced</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="custom-chat-messages">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`message ${message.isUser ? "message-user" : "message-bot"}`}
+            >
+              <div className="message-avatar">
+                {message.isUser ? (
+                  <User size={18} />
+                ) : (
+                  <img 
+                    src="https://avatars.githubusercontent.com/u/230847519?s=48&v=4" 
+                    alt="Bot Avatar"
+                    className="bot-avatar-image"
+                  />
+                )}
+              </div>
+              {message.isCardResponse && message.chatInstance ? (
+                <div className="message-content message-card-content">
+                  <CardManager chatInstance={message.chatInstance as any} />
+                </div>
               ) : (
-                <img 
-                  src="https://avatars.githubusercontent.com/u/230847519?s=48&v=4" 
-                  alt="Bot Avatar"
-                  className="bot-avatar-image"
+                <div
+                  className="message-content"
+                  dangerouslySetInnerHTML={{ __html: message.text }}
                 />
               )}
             </div>
-            {message.isCardResponse && message.chatInstance ? (
-              <div className="message-content message-card-content">
-                <CardManager chatInstance={message.chatInstance as any} />
-              </div>
-            ) : (
-              <div
-                className="message-content"
-                dangerouslySetInnerHTML={{ __html: message.text }}
-              />
-            )}
-          </div>
-        ))}
+          ))}
 
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div className="custom-chat-input-area">
-        <StopButton location="sidebar" />
-        {showExampleUtterances && !inputValue.trim() && (
-          <div className="example-utterances-widget">
-            <div className="example-utterances-header">
-              <span className="example-utterances-title">💡 Try these examples:</span>
-            </div>
-            <div className="example-utterances-list">
-              {exampleUtterances.map((utterance, index) => (
-                <button
-                  key={index}
-                  className="example-utterance-chip"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleExampleClick(utterance);
-                  }}
-                  type="button"
-                >
-                  {utterance}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        <div className="chat-input-container">
-          <div className="textarea-wrapper">
-            <div
-              ref={inputRef}
-              id="main-input_field"
-              className="chat-input"
-              contentEditable={!isProcessing}
-              onInput={handleContentEditableInput}
-              onClick={handleContentEditableClick}
-              onKeyDown={handleKeyPress}
-              onPaste={handlePaste}
-              onFocus={handleInputFocus}
-              onBlur={handleInputBlur}
-              data-placeholder="Type your message... (use @ for file autocomplete - add multiple files)"
-              style={{
-                minHeight: "44px",
-                maxHeight: "120px",
-                overflowY: "auto",
-              }}
-            />
-          </div>
-          <button
-            className="chat-send-btn"
-            onClick={handleSend}
-            disabled={!inputValue.trim() || isProcessing}
-            title="Send message"
-          >
-            <Send size={18} />
-          </button>
+          <div ref={messagesEndRef} />
         </div>
-        
-        {showFileAutocomplete && filteredFiles.length > 0 && (
-          <div className="simple-file-autocomplete">
-            <div className="simple-file-autocomplete-header">
-              <span>Workspace Files</span>
-              <span className="file-count">{filteredFiles.length}</span>
-            </div>
-            <div className="simple-file-autocomplete-list">
-              {filteredFiles.map((file, index) => (
-                <div
-                  key={file.path}
-                  className={`simple-file-autocomplete-item ${index === selectedFileIndex ? 'selected' : ''}`}
-                  onClick={() => handleFileSelect(file.path)}
-                  onMouseEnter={() => {
-                    setSelectedFileIndex(index);
-                    onFileHover?.(filteredFiles[index].path);
-                  }}
-                  onMouseLeave={() => onFileHover?.(null)}
-                >
-                  <FileText size={16} className="file-icon" />
-                  <div className="file-info">
-                    <span className="file-name">{file.name}</span>
-                    <span className="file-path">./{file.path}</span>
+      )}
+
+      {/* Stop button always visible */}
+      <StopButton location="sidebar" />
+
+      {/* Input area only shown when chat has started */}
+      {hasStartedChat && (
+        <div className="custom-chat-input-area">
+
+          {!hasStartedChat && (
+            <div className="get-started-section">
+              <div className="section-header">
+                <h2 className="section-title">Get Started</h2>
+                <p className="section-subtitle">Try one of these examples or type your own request</p>
+              </div>
+
+              {showExampleUtterances && !inputValue.trim() && (
+                <div className="example-utterances-widget">
+                  <div className="example-utterances-list">
+                    {exampleUtterances.map((utterance, index) => (
+                      <button
+                        key={index}
+                        className="example-utterance-chip"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleExampleClick(utterance);
+                        }}
+                        type="button"
+                      >
+                        {utterance}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              ))}
+              )}
             </div>
-            <div className="simple-file-autocomplete-footer">
-              <span className="hint">↑↓ navigate • Enter/Tab select • Esc close</span>
+          )}
+
+          <div className="chat-input-wrapper">
+            {!hasStartedChat && (
+              <div className="welcome-logo input-logo">
+                <img
+                  src="https://avatars.githubusercontent.com/u/230847519?s=100&v=4"
+                  alt="CUGA Logo"
+                  className="welcome-logo-image"
+                />
+              </div>
+            )}
+            <div className="chat-input-container-chat">
+            <div className="textarea-wrapper">
+              <div
+                ref={inputRef}
+                id="main-input_field"
+                className="chat-input"
+                contentEditable={!isProcessing}
+                onInput={handleContentEditableInput}
+                onClick={handleContentEditableClick}
+                onKeyDown={handleKeyPress}
+                onPaste={handlePaste}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+                data-placeholder="Type your message... (use @ for file autocomplete - add multiple files)"
+                style={{
+                  minHeight: "44px",
+                  maxHeight: "120px",
+                  overflowY: "auto",
+                }}
+              />
             </div>
+            <button
+              className="chat-send-btn"
+              onClick={handleSend}
+              disabled={!inputValue.trim() || isProcessing}
+              title="Send message"
+            >
+              <Send size={18} />
+            </button>
           </div>
-        )}
-      </div>
+          </div>
+
+          {!hasStartedChat || (showExampleUtterances && !inputValue.trim() && hasStartedChat) ? null : null}
+
+          {showFileAutocomplete && filteredFiles.length > 0 && (
+            <div className="simple-file-autocomplete">
+              <div className="simple-file-autocomplete-header">
+                <span>Workspace Files</span>
+                <span className="file-count">{filteredFiles.length}</span>
+              </div>
+              <div className="simple-file-autocomplete-list">
+                {filteredFiles.map((file, index) => (
+                  <div
+                    key={file.path}
+                    className={`simple-file-autocomplete-item ${index === selectedFileIndex ? 'selected' : ''}`}
+                    onClick={() => handleFileSelect(file.path)}
+                    onMouseEnter={() => {
+                      setSelectedFileIndex(index);
+                      onFileHover?.(filteredFiles[index].path);
+                    }}
+                    onMouseLeave={() => onFileHover?.(null)}
+                  >
+                    <FileText size={16} className="file-icon" />
+                    <div className="file-info">
+                      <span className="file-name">{file.name}</span>
+                      <span className="file-path">./{file.path}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="simple-file-autocomplete-footer">
+                <span className="hint">↑↓ navigate • Enter/Tab select • Esc close</span>
+              </div>
+            </div>
+          )}
+
+          {/* Show feature cards only on welcome screen, AFTER input */}
+          {!hasStartedChat && (
+            <div className="welcome-features-section">
+              <div className="section-header">
+                <h2 className="section-title">Key Capabilities</h2>
+                <p className="section-subtitle">Powerful features that make CUGA an intelligent automation platform</p>
+              </div>
+
+              <div className="welcome-features">
+                <div className="feature-card">
+                  <div className="feature-icon multi-agent-icon">
+                    <Bot size={32} />
+                  </div>
+                  <h3 className="feature-title">Multi-Agent System</h3>
+                  <p className="feature-description">Specialized agents work together for planning, coding & execution</p>
+                </div>
+
+                <div className="feature-card">
+                  <div className="feature-icon code-exec-icon">
+                    <Terminal size={32} />
+                  </div>
+                  <h3 className="feature-title">Code Execution</h3>
+                  <p className="feature-description">Write and run Python code in secure sandbox</p>
+                </div>
+
+                <div className="feature-card">
+                  <div className="feature-icon api-icon">
+                    <Code size={32} />
+                  </div>
+                  <h3 className="feature-title">API Integration</h3>
+                  <p className="feature-description">Connect any OpenAPI or MCP server instantly</p>
+                </div>
+
+                <div className="feature-card">
+                  <div className="feature-icon memory-icon">
+                    <Database size={32} />
+                  </div>
+                  <h3 className="feature-title">Smart Memory</h3>
+                  <p className="feature-description">Track variables and data across conversations</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       <DebugPanel threadId={threadIdRef.current || threadId || ""} />
     </div>
   );

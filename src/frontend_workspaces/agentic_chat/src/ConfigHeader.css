@@ -296,3 +296,8 @@
   justify-content: center !important;
 }
 
+/* Hidden tabs - visually hidden but still in DOM */
+.hidden-tab {
+  display: none !important;
+}
+

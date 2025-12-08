@@ -35,6 +35,7 @@ decomposition_strategy = "flexible"  # "exact" = one subtask per app, "flexible"
 
 [server_ports]
 registry = 8001
+# registry_host = "http://localhost:8001"  # Optional: Full registry URL (e.g., "http://registry.example.com" or "http://localhost:8001"). If not set, defaults to "http://localhost:{registry}"
 demo = 7860
 apis_url = 9000
 saved_flows = 8003

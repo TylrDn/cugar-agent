@@ -11,12 +11,11 @@ from loguru import logger
 from pydantic import create_model, Field
 from langchain_core.tools import StructuredTool
 
-from cuga.backend.tools_env.registry.utils.api_utils import get_apis, get_apps
+from cuga.backend.tools_env.registry.utils.api_utils import get_apis, get_apps, get_registry_base_url
 from cuga.backend.cuga_graph.nodes.cuga_lite.tool_provider_interface import (
     ToolProviderInterface,
     AppDefinition,
 )
-from cuga.config import settings
 
 
 async def call_api(app_name: str, api_name: str, args: Dict[str, Any] = None):
@@ -33,7 +32,8 @@ async def call_api(app_name: str, api_name: str, args: Dict[str, Any] = None):
     if args is None:
         args = {}
 
-    registry_host = f'http://127.0.0.1:{settings.server_ports.registry}/functions/call'
+    registry_base = get_registry_base_url()
+    registry_host = f'{registry_base}/functions/call'
 
     payload = {"function_name": api_name, "app_name": app_name, "args": args}
 

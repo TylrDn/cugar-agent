@@ -4,7 +4,18 @@
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background: linear-gradient(359deg, #e7f2ff, #ffffff);
+  background: #f8fafc;
+  position: relative;
+}
+
+/* Welcome mode styles - no padding/margin, full screen, modern gradient */
+.app-layout.welcome-mode {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%);
+}
+
+.app-layout.welcome-mode .main-layout {
+  padding: 0;
+  margin-bottom: 0;
 }
 
 .main-layout {
@@ -15,6 +26,7 @@
   margin-bottom: 42px;
   padding-left: 20%;
   padding-right: 20%;
+  background: linear-gradient(359deg, #e7f2ff, #ffffff);
 }
 
 @media (max-width: 1200px) {
@@ -45,6 +57,10 @@
   border-radius: 8px;
 }
 
+/* Welcome mode - make chat take full width */
+.app-layout.welcome-mode .chat-container {
+  border-radius: 0;
+}
 
 .chat-container .fullScreen {
   height: 100%;
@@ -57,5 +73,56 @@
   box-sizing: border-box;
   height: 100%;
   width: 100%;
+}
+
+/* Tour help button */
+.tour-help-button {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  animation: tourHelpPulse 2s ease-in-out infinite;
+}
+
+@keyframes tourHelpPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 6px 24px rgba(102, 126, 234, 0.6);
+  }
+}
+
+.tour-help-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 24px rgba(102, 126, 234, 0.6);
+  animation: none;
+}
+
+.tour-help-button:active {
+  transform: scale(1.05);
+}
+
+@media (max-width: 640px) {
+  .tour-help-button {
+    width: 46px;
+    height: 46px;
+    bottom: 16px;
+    right: 16px;
+  }
 }
 

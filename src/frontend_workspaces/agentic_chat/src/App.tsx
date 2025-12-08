@@ -1,4 +1,4 @@
-import { useState, Component, ErrorInfo, ReactNode, useCallback, useRef } from "react";
+import { useState, Component, ErrorInfo, ReactNode, useCallback, useRef, useEffect } from "react";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { CustomChat } from "./CustomChat";
@@ -7,6 +7,10 @@ import { LeftSidebar } from "./LeftSidebar";
 import { StatusBar } from "./StatusBar";
 import { WorkspacePanel } from "./WorkspacePanel";
 import { FileAutocomplete } from "./FileAutocomplete";
+import { GuidedTour, TourStep } from "./GuidedTour";
+import { useTour } from "./useTour";
+import { AdvancedTourButton } from "./AdvancedTourButton";
+import { HelpCircle } from "lucide-react";
 import "./AppLayout.css";
 import "./mockApi";
 import "./workspaceThrottle"; // Enforce 3-second minimum interval between workspace API calls
@@ -67,6 +71,22 @@ export function App() {
   const [previousVariablesCount, setPreviousVariablesCount] = useState(0);
   const [previousHistoryLength, setPreviousHistoryLength] = useState(0);
   const leftSidebarRef = useRef<{ addConversation: (title: string) => void } | null>(null);
+  // Initialize hasStartedChat from URL query parameter immediately
+  const [hasStartedChat, setHasStartedChat] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('mode') === 'advanced';
+  });
+
+  // Update URL when entering advanced mode
+  useEffect(() => {
+    if (hasStartedChat) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('mode', 'advanced');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [hasStartedChat]);
+  
+  const { isTourActive, hasSeenTour, startTour, completeTour, skipTour, resetTour } = useTour();
 
   // Handle variables updates from CustomChat
   const handleVariablesUpdate = useCallback((variables: Record<string, any>, history: Array<any>) => {
@@ -112,47 +132,138 @@ export function App() {
     setActiveTab("conversations");
   }, []);
 
+  // Handle chat started state
+  const handleChatStarted = useCallback((started: boolean) => {
+    setHasStartedChat(started);
+  }, []);
+
+  // Define tour steps
+  const tourSteps: TourStep[] = [
+    {
+      target: ".welcome-title",
+      title: "Welcome to CUGA!",
+      content: "CUGA is an intelligent digital agent that autonomously executes complex tasks through multi-agent orchestration, API integration, and code generation.",
+      placement: "bottom",
+      highlightPadding: 12,
+    },
+    {
+      target: "#main-input_field",
+      title: "Chat Input",
+      content: "Type your requests here. You can ask CUGA to manage contacts, read files, send emails, or perform any complex task.",
+      placement: "top",
+      highlightPadding: 10,
+    },
+    {
+      target: "#main-input_field",
+      title: "File Tagging with @",
+      content: "Type @ followed by a file name to tag files in your message. This allows CUGA to access and work with specific files from your workspace.",
+      placement: "top",
+      highlightPadding: 10,
+    },
+    {
+      target: ".example-utterances-widget",
+      title: "Try Example Queries",
+      content: "Click any of these example queries to get started quickly. These demonstrate the types of tasks CUGA can handle.",
+      placement: "top",
+      highlightPadding: 12,
+      beforeShow: () => {
+        const input = document.getElementById("main-input_field");
+        if (input) input.focus();
+      },
+    },
+    {
+      target: ".welcome-features",
+      title: "Key Features",
+      content: "CUGA offers multi-agent coordination, secure code execution, API integration, and smart memory to handle complex workflows.",
+      placement: "top",
+      highlightPadding: 12,
+    },
+  ];
+
+  // Disabled: Tour no longer starts automatically on welcome screen
+  // Start tour automatically for first-time users after a delay
+  // useEffect(() => {
+  //   if (!hasSeenTour && !hasStartedChat) {
+  //     const timer = setTimeout(() => {
+  //       startTour();
+  //     }, 1000);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [hasSeenTour, hasStartedChat, startTour]);
+
   return (
     <ErrorBoundary>
-      <div className="app-layout">
-        <ConfigHeader
-          onToggleLeftSidebar={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
-          onToggleWorkspace={() => setWorkspacePanelOpen(!workspacePanelOpen)}
-          leftSidebarCollapsed={leftSidebarCollapsed}
-          workspaceOpen={workspacePanelOpen}
-        />
-        <div className="main-layout">
-          <LeftSidebar
-            globalVariables={globalVariables}
-            variablesHistory={variablesHistory}
-            selectedAnswerId={selectedAnswerId}
-            onSelectAnswer={setSelectedAnswerId}
-            isCollapsed={leftSidebarCollapsed}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            leftSidebarRef={leftSidebarRef}
+      <div className={`app-layout ${!hasStartedChat ? 'welcome-mode' : ''}`}>
+        {hasStartedChat && (
+          <ConfigHeader
+            onToggleLeftSidebar={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
+            onToggleWorkspace={() => setWorkspacePanelOpen(!workspacePanelOpen)}
+            leftSidebarCollapsed={leftSidebarCollapsed}
+            workspaceOpen={workspacePanelOpen}
           />
+        )}
+        <div className="main-layout">
+          {hasStartedChat && (
+            <LeftSidebar
+              globalVariables={globalVariables}
+              variablesHistory={variablesHistory}
+              selectedAnswerId={selectedAnswerId}
+              onSelectAnswer={setSelectedAnswerId}
+              isCollapsed={leftSidebarCollapsed}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              leftSidebarRef={leftSidebarRef}
+            />
+          )}
           <div className="chat-container">
             <CustomChat
               onVariablesUpdate={handleVariablesUpdate}
               onFileAutocompleteOpen={() => setWorkspacePanelOpen(true)}
               onFileHover={setHighlightedFile}
               onMessageSent={handleMessageSent}
+              onChatStarted={handleChatStarted}
+              initialChatStarted={hasStartedChat}
             />
           </div>
-          <WorkspacePanel
-            isOpen={workspacePanelOpen}
-            onToggle={() => setWorkspacePanelOpen(!workspacePanelOpen)}
-            highlightedFile={highlightedFile}
-          />
+          {hasStartedChat && (
+            <WorkspacePanel
+              isOpen={workspacePanelOpen}
+              onToggle={() => setWorkspacePanelOpen(!workspacePanelOpen)}
+              highlightedFile={highlightedFile}
+            />
+          )}
         </div>
-        <StatusBar />
+        {hasStartedChat && <StatusBar />}
         <FileAutocomplete
           onFileSelect={(path) => console.log("File selected:", path)}
           onAutocompleteOpen={() => setWorkspacePanelOpen(true)}
           onFileHover={setHighlightedFile}
           disabled={false}
         />
+        
+        {/* Tour help button - welcome screen - DISABLED */}
+        {/* {!hasStartedChat && hasSeenTour && (
+          <button
+            className="tour-help-button"
+            onClick={resetTour}
+            title="Restart Tour"
+          >
+            <HelpCircle size={20} />
+          </button>
+        )} */}
+        
+        {/* Advanced tour button - after chat started */}
+        {hasStartedChat && <AdvancedTourButton />}
+        
+        {/* Guided Tour - only show when chat has started (disabled on welcome screen) */}
+        {hasStartedChat && isTourActive && (
+          <GuidedTour
+            steps={tourSteps}
+            isActive={isTourActive}
+            onComplete={completeTour}
+            onSkip={skipTour}
+          />
+        )}
       </div>
     </ErrorBoundary>
   );

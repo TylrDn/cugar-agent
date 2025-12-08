@@ -11,6 +11,24 @@ from cuga.backend.activity_tracker.tracker import ActivityTracker
 tracker = ActivityTracker()
 
 
+def get_registry_base_url() -> str:
+    """
+    Get the base URL for the registry server.
+
+    If registry_host is configured in settings, use it.
+    Otherwise, default to http://localhost:{registry_port}
+
+    Returns:
+        str: Base URL for the registry server (without trailing slash)
+    """
+    if hasattr(settings.server_ports, 'registry_host') and settings.server_ports.registry_host:
+        registry_host = settings.server_ports.registry_host
+        # Remove trailing slash if present
+        return registry_host.rstrip('/')
+    else:
+        return f'http://localhost:{settings.server_ports.registry}'
+
+
 async def get_apis(app_name: str):
     """
     Execute an asynchronous GET request to retrieve Petstore APIs from localhost:8001
@@ -37,7 +55,8 @@ async def get_apis(app_name: str):
         logger.warning(e)
 
     # Get tools from API
-    url = f'http://127.0.0.1:{settings.server_ports.registry}/applications/{app_name}/apis?include_response_schema=true'
+    registry_base = get_registry_base_url()
+    url = f'{registry_base}/applications/{app_name}/apis?include_response_schema=true'
     headers = {'accept': 'application/json'}
 
     try:
@@ -76,7 +95,8 @@ async def get_apps() -> List[AppDefinition]:
     """
     logger.debug("Calling get apps")
 
-    url = f'http://127.0.0.1:{settings.server_ports.registry}/applications'
+    registry_base = get_registry_base_url()
+    url = f'{registry_base}/applications'
     headers = {'accept': 'application/json'}
     external_apps = tracker.apps
     if not settings.advanced_features.registry:

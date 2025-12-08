@@ -17,7 +17,6 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from cuga.backend.memory.cli import memory_app
 from cuga.config import PACKAGE_ROOT, TRAJECTORY_DATA_DIR, get_user_data_path, settings
 from cuga.configurations.instructions_manager import InstructionsManager
 
@@ -31,7 +30,11 @@ app = typer.Typer(
     help="Cuga CLI for managing services with direct execution",
     short_help="Service management tool for Cuga components",
 )
-app.add_typer(memory_app, name="memory")
+
+if settings.advanced_features.enable_memory:
+    from cuga.backend.memory.cli import memory_app
+
+    app.add_typer(memory_app, name="memory")
 
 # Global variables to track running direct processes (registry/demo)
 direct_processes = {}

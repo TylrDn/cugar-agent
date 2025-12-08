@@ -19,7 +19,7 @@ from cuga.backend.cuga_graph.utils.nodes_names import NodeNames
 from cuga.config import settings
 from langgraph.types import Command
 from loguru import logger
-from cuga.backend.tools_env.registry.utils.api_utils import get_apps, count_total_tools
+from cuga.backend.tools_env.registry.utils.api_utils import get_apps, count_total_tools, get_registry_base_url
 from langchain_core.messages import AIMessage
 
 
@@ -125,10 +125,9 @@ class TaskAnalyzer(BaseNode):
     async def call_authenticate_apps(apps: List[str]):
         payload = {"apps": apps}  # JSON body
         async with httpx.AsyncClient() as client:
-            from cuga.config import settings
-
+            registry_base = get_registry_base_url()
             response = await client.post(  # Changed from GET to POST
-                f"http://127.0.0.1:{settings.server_ports.registry}/api/authenticate_apps",
+                f"{registry_base}/api/authenticate_apps",
                 json=payload,  # Send as JSON body
             )
             print(response.status_code)

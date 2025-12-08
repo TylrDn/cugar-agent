@@ -12,7 +12,7 @@ from loguru import logger
 from langchain_core.tools import StructuredTool
 
 from cuga.backend.activity_tracker.tracker import ActivityTracker
-from cuga.backend.tools_env.registry.utils.api_utils import get_apps
+from cuga.backend.tools_env.registry.utils.api_utils import get_apps, get_registry_base_url
 from cuga.backend.tools_env.registry.utils.types import AppDefinition
 from cuga.backend.cuga_graph.nodes.cuga_lite.tool_provider_interface import (
     ToolProviderInterface,
@@ -278,7 +278,8 @@ class CombinedToolProvider(ToolProviderInterface):
         if settings.advanced_features.registry:
             try:
                 logger.debug(f"Getting tools from registry for: {app_name}")
-                url = f'http://127.0.0.1:{settings.server_ports.registry}/applications/{app_name}/apis?include_response_schema=true'
+                registry_base = get_registry_base_url()
+                url = f'{registry_base}/applications/{app_name}/apis?include_response_schema=true'
                 headers = {'accept': 'application/json'}
 
                 async with aiohttp.ClientSession() as session:

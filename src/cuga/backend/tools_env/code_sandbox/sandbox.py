@@ -15,6 +15,7 @@ import importlib
 from datetime import datetime
 from loguru import logger
 from cuga.config import settings, LOGGING_DIR
+from cuga.backend.tools_env.registry.utils.api_utils import get_registry_base_url
 import docker
 
 
@@ -74,11 +75,28 @@ structured_tools_invocation = """
 
 
 def get_premable(is_local=False, current_date=None):
-    registry_host = (
-        f"http://host.docker.internal:{str(settings.server_ports.registry)}/functions/call?trajectory_path={quote(tracker.get_current_trajectory_path())}"
-        if not is_local
-        else f"http://localhost:{str(settings.server_ports.registry)}/functions/call?trajectory_path={quote(tracker.get_current_trajectory_path())}"
-    )
+    # Use configured registry_host if available, otherwise use default logic
+    # If registry_host is configured, get_registry_base_url() will return it
+    # Otherwise, it returns http://localhost:{port}
+    registry_base = get_registry_base_url()
+
+    # Check if registry_host was explicitly configured
+    if hasattr(settings.server_ports, 'registry_host') and settings.server_ports.registry_host:
+        # Use the configured registry_host directly
+        registry_host = (
+            f"{registry_base}/functions/call?trajectory_path={quote(tracker.get_current_trajectory_path())}"
+        )
+    else:
+        # Fallback to default behavior (Docker vs local)
+        # In Docker, use host.docker.internal to access host services
+        base_url = (
+            registry_base  # localhost when is_local=True
+            if is_local
+            else f"http://host.docker.internal:{str(settings.server_ports.registry)}"  # Docker host
+        )
+        registry_host = (
+            f"{base_url}/functions/call?trajectory_path={quote(tracker.get_current_trajectory_path())}"
+        )
 
     # Check if structured tools should be enabled
     if settings.features.local_sandbox and tracker.tools is not None and len(tracker.tools) > 0:

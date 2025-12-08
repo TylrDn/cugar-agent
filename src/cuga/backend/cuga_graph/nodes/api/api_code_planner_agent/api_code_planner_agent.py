@@ -12,7 +12,6 @@ from cuga.backend.llm.utils.helpers import load_prompt_simple
 from cuga.config import settings
 from langchain_core.tools import tool
 from cuga.configurations.instructions_manager import InstructionsManager
-from cuga.backend.memory.agentic_memory.utils.memory_tips_formatted import get_formatted_tips
 
 instructions_manager = InstructionsManager()
 llm_manager = LLMManager()
@@ -50,6 +49,8 @@ class APICodePlannerAgent(BaseAgent):
         # memory integration
         rtrvd_tips_formatted = None
         if settings.advanced_features.enable_memory:
+            from cuga.backend.memory.agentic_memory.utils.memory_tips_formatted import get_formatted_tips
+
             rtrvd_tips_formatted = get_formatted_tips(
                 namespace_id="memory",
                 agent_id='APICodePlannerAgent',

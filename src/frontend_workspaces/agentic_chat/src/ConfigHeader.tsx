@@ -72,7 +72,7 @@ export function ConfigHeader({
               <span>Workspace</span>
             </button>
             <button
-              className="config-header-btn"
+              className="config-header-btn hidden-tab"
               disabled
               title="Configure knowledge sources (Coming soon)"
             >
@@ -80,7 +80,7 @@ export function ConfigHeader({
               <span>Knowledge</span>
             </button>
             <button
-              className="config-header-btn"
+              className="config-header-btn hidden-tab"
               disabled
               title="Configure memory settings (Coming soon)"
             >
@@ -88,7 +88,7 @@ export function ConfigHeader({
               <span>Memory</span>
             </button>
             <button
-              className="config-header-btn"
+              className="config-header-btn hidden-tab"
               disabled
               title="Configure sub-agents (Coming soon)"
             >
@@ -104,7 +104,7 @@ export function ConfigHeader({
               <span>Tools</span>
             </button>
             <button
-              className="config-header-btn"
+              className="config-header-btn hidden-tab"
               disabled
               title="Configure model settings (Coming soon)"
             >
@@ -112,7 +112,7 @@ export function ConfigHeader({
               <span>Model</span>
             </button>
             <button
-              className="config-header-btn"
+              className="config-header-btn hidden-tab"
               disabled
               title="Configure security policies (Coming soon)"
             >
@@ -120,7 +120,7 @@ export function ConfigHeader({
               <span>Policies</span>
             </button>
             <button
-              className="config-header-btn"
+              className="config-header-btn hidden-tab"
               disabled
               title="Configure agent autonomy and human interaction (Coming soon)"
             >
@@ -198,21 +198,21 @@ export function ConfigHeader({
                 <span>Workspace</span>
               </button>
               <button
-                className="mobile-menu-item"
+                className="mobile-menu-item hidden-tab"
                 disabled
               >
                 <BookOpen size={18} />
                 <span>Knowledge</span>
               </button>
               <button
-                className="mobile-menu-item"
+                className="mobile-menu-item hidden-tab"
                 disabled
               >
                 <Brain size={18} />
                 <span>Memory</span>
               </button>
               <button
-                className="mobile-menu-item"
+                className="mobile-menu-item hidden-tab"
                 disabled
               >
                 <Users size={18} />
@@ -229,21 +229,21 @@ export function ConfigHeader({
                 <span>Tools</span>
               </button>
               <button
-                className="mobile-menu-item"
+                className="mobile-menu-item hidden-tab"
                 disabled
               >
                 <Cpu size={18} />
                 <span>Model</span>
               </button>
               <button
-                className="mobile-menu-item"
+                className="mobile-menu-item hidden-tab"
                 disabled
               >
                 <Shield size={18} />
                 <span>Policies</span>
               </button>
               <button
-                className="mobile-menu-item"
+                className="mobile-menu-item hidden-tab"
                 disabled
               >
                 <UserCog size={18} />

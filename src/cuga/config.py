@@ -128,6 +128,7 @@ validators = [
     Validator("features.chat", default=True),
     Validator("features.memory_provider", default="mem0"),
     Validator("playwright_args", default=[]),
+    Validator("server_ports.registry_host", default=None),
 ]
 base_settings = Dynaconf(
     root_path=PACKAGE_ROOT,

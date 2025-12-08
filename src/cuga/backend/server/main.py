@@ -7,6 +7,7 @@ import os
 import subprocess
 import uuid
 import yaml
+import httpx
 from contextlib import asynccontextmanager
 from typing import List, Dict, Any, Union, Optional
 from pathlib import Path
@@ -1363,6 +1364,45 @@ async def upload_workspace_file(file: UploadFile = File(...)):
     except Exception as e:
         logger.error(f"Failed to upload file: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
+
+
+@app.post("/functions/call", tags=["Registry Proxy"])
+async def proxy_function_call(request: Request):
+    """
+    Proxy endpoint that forwards function call requests to the registry server.
+    Exposes the registry's /functions/call endpoint through the main HuggingFace Space URL.
+    """
+    try:
+        from cuga.backend.tools_env.registry.utils.api_utils import get_registry_base_url
+
+        registry_base = get_registry_base_url()
+        registry_url = f"{registry_base}/functions/call"
+
+        body = await request.body()
+        headers = dict(request.headers)
+        headers.pop('host', None)
+
+        trajectory_path = request.query_params.get('trajectory_path')
+        params = {}
+        if trajectory_path:
+            params['trajectory_path'] = trajectory_path
+
+        async with httpx.AsyncClient(timeout=600.0) as client:
+            response = await client.post(registry_url, content=body, headers=headers, params=params)
+
+            return JSONResponse(
+                content=response.json()
+                if response.headers.get('content-type', '').startswith('application/json')
+                else response.text,
+                status_code=response.status_code,
+                headers=dict(response.headers),
+            )
+    except httpx.RequestError as e:
+        logger.error(f"Error connecting to registry server: {e}")
+        raise HTTPException(status_code=503, detail=f"Registry service unavailable: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error proxying function call: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to proxy function call: {str(e)}")
 
 
 async def get_query(request: Request) -> Union[str, ActionResponse]:
