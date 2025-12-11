@@ -86,15 +86,22 @@ class LLMManager:
         if hasattr(model, 'model_kwargs') and model.model_kwargs is not None:
             model_kwargs = model.model_kwargs.copy()
 
-        # Update temperature
-        if hasattr(model, 'temperature'):
-            logger.debug(f"Updating model temperature: {temperature}")
-            if hasattr(model, 'model_kwargs') and model.model_kwargs is not None:
-                logger.debug(f"Model keys: {model.model_kwargs.keys()}")
-            logger.debug(f"Model instance: {type(model)}")
-            model.temperature = temperature
-        elif 'temperature' in model_kwargs:
-            model_kwargs['temperature'] = temperature
+        # Check if this is a reasoning model
+        model_name = getattr(model, 'model_name', '') or getattr(model, 'model', '')
+        is_reasoning = self._is_reasoning_model(model_name)
+
+        # Update temperature only for non-reasoning models
+        if not is_reasoning:
+            if hasattr(model, 'temperature'):
+                logger.debug(f"Updating model temperature: {temperature}")
+                if hasattr(model, 'model_kwargs') and model.model_kwargs is not None:
+                    logger.debug(f"Model keys: {model.model_kwargs.keys()}")
+                logger.debug(f"Model instance: {type(model)}")
+                model.temperature = temperature
+            elif 'temperature' in model_kwargs:
+                model_kwargs['temperature'] = temperature
+        else:
+            logger.debug(f"Skipping temperature update for reasoning model: {model_name}")
 
         # Set max_completion_tokens (defaults to max_tokens if not provided)
         completion_tokens = max_completion_tokens if max_completion_tokens is not None else max_tokens
@@ -310,6 +317,14 @@ class LLMManager:
             # For other platforms, use TOML settings
             return model_settings.get('url')
 
+    def _is_reasoning_model(self, model_name: str) -> bool:
+        """Check if model is a reasoning model that doesn't support temperature
+
+        OpenAI's reasoning models (o1, o3, gpt-5 series) don't support temperature parameter
+        """
+        reasoning_prefixes = ('o1', 'o3', 'gpt-5')
+        return model_name.startswith(reasoning_prefixes)
+
     def _create_llm_instance(self, model_settings: Dict[str, Any]):
         """Create LLM instance based on platform and settings"""
         platform = model_settings.get('platform')
@@ -322,7 +337,10 @@ class LLMManager:
         base_url = self._get_base_url(model_settings, platform)
         if platform == "azure":
             api_version = str(model_settings.get('api_version'))
-            if model_name == "o3":
+            is_reasoning = self._is_reasoning_model(model_name)
+
+            if is_reasoning:
+                logger.debug(f"Creating AzureChatOpenAI reasoning model: {model_name} (no temperature)")
                 llm = AzureChatOpenAI(
                     model_version=api_version,
                     timeout=61,
@@ -339,13 +357,20 @@ class LLMManager:
                     max_tokens=max_tokens,
                 )
         elif platform == "openai":
+            is_reasoning = self._is_reasoning_model(model_name)
+
             # Build ChatOpenAI parameters
             openai_params = {
                 "model_name": model_name,
-                "temperature": temperature,
                 "max_tokens": max_tokens,
                 "timeout": 61,
             }
+
+            # Only add temperature for non-reasoning models
+            if not is_reasoning:
+                openai_params["temperature"] = temperature
+            else:
+                logger.debug(f"Skipping temperature for reasoning model: {model_name}")
 
             # Add API key if specified
             apikey_name = model_settings.get("apikey_name")
@@ -408,6 +433,7 @@ class LLMManager:
         elif platform == "openrouter":
             # OpenRouter uses OpenAI-compatible API
             logger.debug(f"Creating OpenRouter model: {model_name}")
+            is_reasoning = self._is_reasoning_model(model_name)
 
             # Get API key from environment
             api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -417,12 +443,17 @@ class LLMManager:
             # Build OpenRouter parameters
             openrouter_params = {
                 "model_name": model_name,
-                "temperature": temperature,
                 "max_tokens": max_tokens,
                 "timeout": 61,
                 "openai_api_key": api_key,
                 "openai_api_base": base_url,
             }
+
+            # Only add temperature for non-reasoning models
+            if not is_reasoning:
+                openrouter_params["temperature"] = temperature
+            else:
+                logger.debug(f"Skipping temperature for reasoning model: {model_name}")
 
             # Optional: Add custom headers for OpenRouter features
             default_headers = {}

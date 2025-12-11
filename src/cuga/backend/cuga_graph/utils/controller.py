@@ -284,7 +284,13 @@ class AgentRunner:
         sites: List[str] = None,
         session_id: str = None,
         current_datetime: Optional[str] = None,
+        chat_messages: List[AIMessage] = None,
     ) -> AsyncGenerator[Union[ExperimentResult, StreamEvent], None]:
+        logger.debug(
+            "Initiated agent with number of chat messages: {}".format(
+                len(chat_messages) if chat_messages else 0
+            )
+        )
         langfuse_handler = None
         if settings.advanced_features.langfuse_tracing and LangfuseCallbackHandler is not None:
             langfuse_handler = LangfuseCallbackHandler()
@@ -296,6 +302,7 @@ class AgentRunner:
             page=self.env.page if self.env else None,
             observation=self.obs,
             goal=goal if goal else self.obs['goal'],
+            chat_messages=chat_messages if chat_messages else [],
         )
         state.sites = sites
         await self.browser_update_state(state)
@@ -304,6 +311,7 @@ class AgentRunner:
             thread_id=self.thread_id,
             langfuse_handler=langfuse_handler,
             graph=agent.graph,
+            tracker=tracker,
             env_pointer=self.env,
         )
         state.current_datetime = current_datetime if current_datetime else datetime.datetime.now().isoformat()

@@ -377,7 +377,8 @@ class AgentLoop:
         msg = ""
         for key, val in dict.items():
             if isinstance(val, list):
-                msg += f"**{key}**: {'\n'.join([f'{i}. {va}' for i, va in enumerate(val)])}\n\n"
+                list_items = '\n'.join([f'{i}. {va}' for i, va in enumerate(val)])
+                msg += f"**{key}**: {list_items}\n\n"
             else:
                 msg += f"**{key}**: {val}\n\n"
         return msg

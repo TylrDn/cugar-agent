@@ -535,7 +535,6 @@ dependencies = [
     { name = "browsergym-core" },
     { name = "docker" },
     { name = "dynaconf" },
-    { name = "e2b-code-interpreter" },
     { name = "fastapi", extra = ["standard"] },
     { name = "fastmcp" },
     { name = "html2text" },
@@ -579,6 +578,9 @@ dev = [
     { name = "tabulate" },
     { name = "termcolor" },
 ]
+e2b = [
+    { name = "e2b-code-interpreter" },
+]
 google-genai = [
     { name = "langchain-google-genai" },
 ]
@@ -599,9 +601,8 @@ requires-dist = [
     { name = "browsergym-core", specifier = "==0.13.0" },
     { name = "docker" },
     { name = "dynaconf" },
-    { name = "e2b-code-interpreter", specifier = ">=2.4.1" },
     { name = "fastapi", extras = ["standard"] },
-    { name = "fastmcp", specifier = ">=2.13.2,<2.13.3" },
+    { name = "fastmcp" },
     { name = "html2text" },
     { name = "httpx" },
     { name = "langchain" },
@@ -640,6 +641,7 @@ dev = [
     { name = "tabulate" },
     { name = "termcolor" },
 ]
+e2b = [{ name = "e2b-code-interpreter", specifier = ">=2.4.1" }]
 google-genai = [{ name = "langchain-google-genai", specifier = ">=2.0.11" }]
 groq = [{ name = "langchain-groq", specifier = ">=0.3.8" }]
 memory = [

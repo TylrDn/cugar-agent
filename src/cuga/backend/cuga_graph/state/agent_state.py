@@ -824,8 +824,10 @@ class Prediction(BaseModel):
     args: Optional[List[str]]
 
 
-def default_state(page, observation, goal):
-    return AgentState(input=goal, url=page.url if page else "")
+def default_state(page, observation, goal, chat_messages=None):
+    return AgentState(
+        input=goal, url=page.url if page else "", chat_messages=chat_messages if chat_messages else []
+    )
 
 
 class SubTaskHistory(BaseModel):

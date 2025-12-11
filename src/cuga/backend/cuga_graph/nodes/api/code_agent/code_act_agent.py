@@ -224,7 +224,7 @@ def create_codeact(
         messages = [{"role": "system", "content": prompt}] + state["messages"]
         # Disable tool calling by binding no tools
         model_without_tools = model
-        response = await model_without_tools.ainvoke(messages, config={"tool_choice": "none"})
+        response = await model_without_tools.ainvoke(messages)
         # Extract and combine all code blocks
         content = response.content
         reasoning_content = response.additional_kwargs.get('reasoning_content')
