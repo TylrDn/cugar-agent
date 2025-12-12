@@ -355,9 +355,7 @@ emma.larsson@nexus-digital.co"""
         sys.exit(1)
 
 
-def start_filesystem_server(
-    workspace: Path, no_cache: bool = False, local: bool = False, source_dir: Path = None
-) -> subprocess.Popen:
+def start_filesystem_server(workspace: Path, no_cache: bool = False, local: bool = False, source_dir: Path = None) -> subprocess.Popen:
     """Start the File System MCP server"""
     print_step(4, 6, "Starting File System MCP Server")
 
@@ -373,27 +371,23 @@ def start_filesystem_server(
         ]
         if no_cache:
             cmd.append('--no-cache')
-        cmd.extend(
-            [
-                'python',
-                str(filesystem_path / "main.py"),
-                workspace_str,
-            ]
-        )
+        cmd.extend([
+            'python',
+            str(filesystem_path / "main.py"),
+            workspace_str,
+        ])
     else:
         cmd = [
             'uvx',
         ]
         if no_cache:
             cmd.append('--no-cache')
-        cmd.extend(
-            [
-                '--from',
-                'git+https://github.com/cuga-project/cuga-agent.git#subdirectory=docs/examples/demo_apps/file_system',
-                'filesystem-server',
-                workspace_str,
-            ]
-        )
+        cmd.extend([
+            '--from',
+            'git+https://github.com/cuga-project/cuga-agent.git#subdirectory=docs/examples/demo_apps/file_system',
+            'filesystem-server',
+            workspace_str,
+        ])
 
     try:
         print_info(f"Command: {' '.join(cmd)}")
@@ -418,9 +412,7 @@ def start_filesystem_server(
         sys.exit(1)
 
 
-def start_crm_server(
-    no_cache: bool = False, local: bool = False, source_dir: Path = None
-) -> subprocess.Popen:
+def start_crm_server(no_cache: bool = False, local: bool = False, source_dir: Path = None) -> subprocess.Popen:
     """Start the CRM MCP server"""
     print_step(5, 6, "Starting CRM MCP Server")
 
@@ -435,26 +427,22 @@ def start_crm_server(
         ]
         if no_cache:
             cmd.append('--no-cache')
-        cmd.extend(
-            [
-                'python',
-                '-m',
-                'crm_api.run_all',
-            ]
-        )
+        cmd.extend([
+            'python',
+            '-m',
+            'crm_api.run_all',
+        ])
     else:
         cmd = [
             'uvx',
         ]
         if no_cache:
             cmd.append('--no-cache')
-        cmd.extend(
-            [
-                '--from',
-                'git+https://github.com/cuga-project/cuga-agent.git#subdirectory=docs/examples/demo_apps/crm',
-                'crm',
-            ]
-        )
+        cmd.extend([
+            '--from',
+            'git+https://github.com/cuga-project/cuga-agent.git#subdirectory=docs/examples/demo_apps/crm',
+            'crm',
+        ])
 
     try:
         print_info(f"Command: {' '.join(cmd)}")
@@ -478,9 +466,7 @@ def start_crm_server(
         sys.exit(1)
 
 
-def start_email_sink(
-    no_cache: bool = False, local: bool = False, source_dir: Path = None
-) -> subprocess.Popen:
+def start_email_sink(no_cache: bool = False, local: bool = False, source_dir: Path = None) -> subprocess.Popen:
     """Start the Email SMTP Sink"""
     print_info("Starting Email SMTP Sink")
 
@@ -495,25 +481,21 @@ def start_email_sink(
         ]
         if no_cache:
             cmd.append('--no-cache')
-        cmd.extend(
-            [
-                'python',
-                str(email_sink_path / "server.py"),
-            ]
-        )
+        cmd.extend([
+            'python',
+            str(email_sink_path / "server.py"),
+        ])
     else:
         cmd = [
             'uvx',
         ]
         if no_cache:
             cmd.append('--no-cache')
-        cmd.extend(
-            [
-                '--from',
-                'git+https://github.com/cuga-project/cuga-agent.git#subdirectory=docs/examples/demo_apps/email_mcp/mail_sink',
-                'email_sink',
-            ]
-        )
+        cmd.extend([
+            '--from',
+            'git+https://github.com/cuga-project/cuga-agent.git#subdirectory=docs/examples/demo_apps/email_mcp/mail_sink',
+            'email_sink',
+        ])
 
     try:
         print_info(f"Command: {' '.join(cmd)}")
@@ -538,9 +520,7 @@ def start_email_sink(
         sys.exit(1)
 
 
-def start_email_server(
-    no_cache: bool = False, local: bool = False, source_dir: Path = None
-) -> subprocess.Popen:
+def start_email_server(no_cache: bool = False, local: bool = False, source_dir: Path = None) -> subprocess.Popen:
     """Start the Email MCP server"""
     print_info("Starting Email MCP Server")
 
@@ -555,25 +535,21 @@ def start_email_server(
         ]
         if no_cache:
             cmd.append('--no-cache')
-        cmd.extend(
-            [
-                'python',
-                str(email_server_path / "server.py"),
-            ]
-        )
+        cmd.extend([
+            'python',
+            str(email_server_path / "server.py"),
+        ])
     else:
         cmd = [
             'uvx',
         ]
         if no_cache:
             cmd.append('--no-cache')
-        cmd.extend(
-            [
-                '--from',
-                'git+https://github.com/cuga-project/cuga-agent.git#subdirectory=docs/examples/demo_apps/email_mcp/mcp_server',
-                'email_mcp',
-            ]
-        )
+        cmd.extend([
+            '--from',
+            'git+https://github.com/cuga-project/cuga-agent.git#subdirectory=docs/examples/demo_apps/email_mcp/mcp_server',
+            'email_mcp',
+        ])
 
     try:
         print_info(f"Command: {' '.join(cmd)}")
@@ -699,7 +675,7 @@ def monitor_servers():
                     # Drain stdout non-blockingly
                     if proc.stdout:
                         import select
-
+                        import os
                         # Use select to check if data is available without blocking
                         if hasattr(select, 'select'):
                             # Unix-like systems
@@ -713,6 +689,7 @@ def monitor_servers():
                         else:
                             # Windows fallback - read available data
                             while True:
+                                import io
                                 # Peek to see if data is available
                                 if hasattr(proc.stdout, 'peek'):
                                     peek_data = proc.stdout.peek(1)
@@ -731,7 +708,6 @@ def monitor_servers():
                     # Drain stderr non-blockingly
                     if proc.stderr:
                         import select
-
                         # Use select to check if data is available without blocking
                         if hasattr(select, 'select'):
                             # Unix-like systems
@@ -767,9 +743,7 @@ def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='CUGA Demo Setup CLI')
     parser.add_argument('--email', action='store_true', help='Include email MCP server and SMTP sink')
-    parser.add_argument(
-        '--cache', action='store_true', help='Enable uv caching (default: disabled for fresh installations)'
-    )
+    parser.add_argument('--cache', action='store_true', help='Enable uv caching (default: disabled for fresh installations)')
     parser.add_argument('--local', action='store_true', help='Use local demo apps instead of git installs')
     parser.add_argument(
         'workspace_path', nargs='?', default=None, help='Path to workspace directory (optional)'
@@ -817,19 +791,13 @@ def main():
     create_contacts_file(workspace)
 
     # Start servers
-    start_filesystem_server(
-        workspace, no_cache=not args.cache, local=args.local, source_dir=getattr(args, 'source_dir', None)
-    )
+    start_filesystem_server(workspace, no_cache=not args.cache, local=args.local, source_dir=getattr(args, 'source_dir', None))
     start_crm_server(no_cache=not args.cache, local=args.local, source_dir=getattr(args, 'source_dir', None))
 
     # Start email servers if requested
     if args.email:
-        start_email_sink(
-            no_cache=not args.cache, local=args.local, source_dir=getattr(args, 'source_dir', None)
-        )
-        start_email_server(
-            no_cache=not args.cache, local=args.local, source_dir=getattr(args, 'source_dir', None)
-        )
+        start_email_sink(no_cache=not args.cache, local=args.local, source_dir=getattr(args, 'source_dir', None))
+        start_email_server(no_cache=not args.cache, local=args.local, source_dir=getattr(args, 'source_dir', None))
 
     # Print configuration
     print_configuration_info(workspace, include_email=args.email)
