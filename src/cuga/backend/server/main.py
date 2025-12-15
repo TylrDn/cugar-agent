@@ -524,14 +524,21 @@ async def event_stream(query: str, api_mode=False, resume=None, thread_id: str =
                                 variables_metadata = (
                                     local_state.variables_manager.get_all_variables_metadata()
                                 )
-
-                        yield StreamEvent(
-                            name="Answer",
-                            data=event.answer
+                        final_answer_text = (
+                            event.answer
                             if settings.advanced_features.wxo_integration
                             else json.dumps({"data": event.answer, "variables": variables_metadata})
                             if event.answer
-                            else "Done.",
+                            else "Done."
+                        )
+                        logger.info("=" * 80)
+                        logger.info("FINAL ANSWER")
+                        logger.info("=" * 80)
+                        logger.info(f"{event.answer if event.answer else 'Done.'}")
+                        logger.info("=" * 80)
+                        yield StreamEvent(
+                            name="Answer",
+                            data=final_answer_text,
                         ).format(app_state.output_format, thread_id=thread_id)
 
                         if thread_id:

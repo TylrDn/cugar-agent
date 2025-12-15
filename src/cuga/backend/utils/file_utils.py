@@ -16,7 +16,10 @@ def read_yaml_file(file_path, relative=True):
         source_path = get_caller_directory_path()
         file_path = os.path.join(source_path, file_path)
     with open(file_path, 'r') as file:
-        data = yaml.safe_load(file)
+        content = file.read()
+        # Expand environment variables in the content
+        expanded_content = os.path.expandvars(content)
+        data = yaml.safe_load(expanded_content)
 
     return data
 

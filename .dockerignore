@@ -62,6 +62,7 @@ logging/trajectory_data
 appworld/experiments/outputs
 logging/code
 
+src/system_tests/e2e/logs/
 # Documentation (but include demo_apps for demo_crm and huggingface examples)
 docs/**
 !docs/examples/demo_apps/

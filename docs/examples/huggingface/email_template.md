@@ -9,7 +9,7 @@ Hello team,
 
 I wanted to share a summary of our key accounts and their performance rankings. Below is an analysis of accounts by revenue percentile:
 
-{TABLE_PLACEHOLDER}
+<results>
 
 This data shows how each account ranks relative to our entire customer base. We should prioritize outreach to top-performing accounts for upsell opportunities and provide additional support to those in lower percentiles.
 

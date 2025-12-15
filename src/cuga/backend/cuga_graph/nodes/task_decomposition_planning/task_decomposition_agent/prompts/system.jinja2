@@ -49,13 +49,25 @@ For multiple applications, always generate subtasks that utilize all application
 **Crucially, do not generate subtasks for low-level operational actions.**  
 * For **web applications**, avoid terms like `click`, `type`, `Maps`, `enter`, `scroll`, `find element`.  
 * For **service-based applications**, avoid technical terms like `call endpoint`, `send HTTP request`, `parse JSON/XML`, `authenticate`, `token`, `payload`, `parameter`.  
-* You do not interact with UIs or service interfaces directly; you **MUST** remain at a high-level description of goals.  
+* You do not interact with UIs or service interfaces directly; you **MUST** remain at a high-level description of goals.
+
+## SINGLE APPLICATION PER SUBTASK
+
+**Critical Rule**: Each subtask description must involve operations for **ONLY ONE application**. Do not create subtasks that mix operations from multiple applications. If a workflow requires data from one application to be used in another, split it into separate subtasks where each subtask clearly operates within a single application's domain.
+
+**Bad Example**: "Read emails from contacts.txt and check which exist in the CRM system" (mixes filesystem and CRM)
+
+**Good Example**: 
+- Subtask 1 (filesystem): "Read the list of emails from contacts.txt"
+- Subtask 2 (crm): "Check which of the provided emails exist as contacts in the CRM system"  
 
 ## TASK CONTEXT & DEPENDENCIES
 
 **Ensure Task Clarity and Context**: Each subtask description must be self-contained. When a task depends on a previous one, its description must explicitly reference the data it needs, for example: "Using the account ID from the previous step, ..." or "Summarize the article content found on 'TechNews Portal'.". This ensures no information is lost between steps.
 
 **Critical - Maintain User Context**: Pay close attention to personal pronouns and possessive adjectives (e.g., "my," "our," "I," "we") and other personal identifiers. The generated subtasks **must** preserve these details to ensure the action is performed for the specific user and their resources. For example, "my accounts" must be reflected as "my accounts" and not "all accounts."
+
+**Data Handoff Between Applications**: When data needs to flow from one application to another, treat the receiving subtask as operating on "the retrieved/provided data from the previous step" rather than describing how to get that data. Each subtask focuses only on what its assigned application should do, assuming inputs from previous steps are available.
 
 ## OUTPUT & RESPONSE HANDLING
 
@@ -499,7 +511,7 @@ If an operation in a subtask needs to be performed on a list of dynamic values, 
 
 ## Example 10 (Two Applications):
 
-**Intent**: "I went on a dinner with some of my coworkers. I paid the entire bill to simplify the payment. I’ve made a note of individual shares in Simple Note. Some people have already sent me their share on Venmo. Make payment requests for others with a description note 'Work Dinner'."
+**Intent**: "I went on a dinner with some of my coworkers. I paid the entire bill to simplify the payment. I've made a note of individual shares in Simple Note. Some people have already sent me their share on Venmo. Make payment requests for others with a description note 'Work Dinner'."
 **applications**:
 
 ```json
@@ -577,7 +589,7 @@ If an operation in a subtask needs to be performed on a list of dynamic values, 
       "app": "Phone"
     },
     {
-      "task": "Calculate each participant's equal share of the $120 subscription cost (i.e., $30 per person including the user), and send a public Venmo payment request to each participant with the description 'Whiteboard Tool Subscription'.",
+      "task": "For each confirmed participant, send a public Venmo payment request for their equal share of $30 (total $120 split among 4 people) with the description 'Whiteboard Tool Subscription'.",
       "type": "api",
       "app": "Venmo"
     }

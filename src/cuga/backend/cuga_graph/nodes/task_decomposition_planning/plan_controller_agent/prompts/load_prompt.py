@@ -11,8 +11,8 @@ class PlanControllerOutput(BaseModel):
     next_subtask: str = Field(
         default="", description="next subtask description (empty if conclude_task is true)"
     )
-    next_subtask_type: Union[Literal['api', 'web'], None, Literal[""]] = Field(
-        default=None, description="next subtask type (null or empty if conclude_task is true)"
+    next_subtask_type: Union[Literal['api', 'web'], None] = Field(
+        default=None, description="next subtask type (null if conclude_task is true)"
     )
     next_subtask_app: str = Field(default="", description="next subtask app (empty if conclude_task is true)")
     conclude_task: bool = Field(..., description="Should the original task be concluded?")

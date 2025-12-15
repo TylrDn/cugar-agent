@@ -18,7 +18,9 @@ import fnmatch
 from mcp.server.fastmcp import FastMCP
 
 # Initialize FastMCP server
-mcp = FastMCP("secure-filesystem-server", port=8112)
+mcp = FastMCP(
+    "secure-filesystem-server", port=int(os.environ.get("DYNACONF_SERVER_PORTS__FILESYSTEM_MCP", "8112"))
+)
 
 # Global allowed directories
 allowed_directories: List[str] = []

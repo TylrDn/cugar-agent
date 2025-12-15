@@ -66,6 +66,7 @@ def load_prompt_chat(system_path, relative_to_caller=True):
     pmt_system = PromptTemplate.from_file(
         system_path,
         template_format="jinja2",
+        encoding="utf-8",
     )
     prompt = ChatPromptTemplate(
         messages=[
@@ -97,9 +98,10 @@ def load_prompt_with_image(
             # "sitemap": open("cuga/backend/knowledge/shopping_admin/sitemap.txt").read(),
         },
         template_format="jinja2",
+        encoding="utf-8",
     )
 
-    pmt_user = PromptTemplate.from_file(user_path, template_format="jinja2")
+    pmt_user = PromptTemplate.from_file(user_path, template_format="jinja2", encoding="utf-8")
     pmt_image = ImagePromptTemplate(input_variables=['img'], template={"url": '{img}'})
     pmt_with_vision = [pmt_image, pmt_user] if settings.advanced_features.use_vision else pmt_user
     prompt = ChatPromptTemplate(
@@ -115,7 +117,7 @@ def load_one_prompt(pmt_path, relative_to_caller=True) -> PromptTemplate:
     if relative_to_caller:
         parent_dir = get_caller_directory_path()
         pmt_path = os.path.join(parent_dir, pmt_path)
-    pmt_system = PromptTemplate.from_file(pmt_path, template_format="jinja2")
+    pmt_system = PromptTemplate.from_file(pmt_path, template_format="jinja2", encoding="utf-8")
     return pmt_system
 
 
@@ -135,7 +137,7 @@ def load_prompt_simple(
         },
         encoding='utf-8',
     )
-    pmt_user = PromptTemplate.from_file(user_path, template_format="jinja2")
+    pmt_user = PromptTemplate.from_file(user_path, template_format="jinja2", encoding="utf-8")
     prompt = ChatPromptTemplate(
         messages=[
             SystemMessagePromptTemplate(prompt=pmt_system),

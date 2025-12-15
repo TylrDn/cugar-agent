@@ -25,6 +25,7 @@ cuga-dashboard
 logging/trajectory_data
 logging/
 dbs/
+crm_tmp/
 debug_extractions/
 debug_extractions_websocket/
 # Ignore dynaconf secret files
@@ -41,7 +42,7 @@ evaluation/experiments/outputs/*
 appworld
 server_logs
 modes.custom.toml
-eval_config.toml
+
 experiments/outputs
 /evaluation/data/tasks/
 /evaluation/data/

@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 import mimetypes
+import os
 import smtplib
 from dataclasses import dataclass
 from datetime import datetime
@@ -56,12 +57,22 @@ def send_email_smtp(
     cc_addrs: Optional[List[str]] = None,
     bcc_addrs: Optional[List[str]] = None,
     attachments_paths: Optional[List[str]] = None,
+    smtp_port: Optional[int] = None,
 ) -> SendResult:
     """
-    Build MIME and send via localhost:1025.
+    Build MIME and send via localhost SMTP sink.
     If both text and html provided, send multipart/alternative.
     Supports file attachments via absolute/relative paths.
+
+    Args:
+        smtp_port: SMTP server port. If not provided, reads from DYNACONF_SERVER_PORTS__EMAIL_SINK env var, defaults to 1025.
     """
+    if smtp_port is None:
+        smtp_port = int(os.environ.get("DYNACONF_SERVER_PORTS__EMAIL_SINK", "1025"))
+
+    print(f"[Email Utils] Preparing to send email via SMTP at 127.0.0.1:{smtp_port}")
+    print(f"[Email Utils] From: {from_addr}, To: {to_addrs}, Subject: {subject}")
+
     msg = EmailMessage()
     msg["From"] = from_addr
     msg["To"] = ", ".join(to_addrs)
@@ -92,10 +103,13 @@ def send_email_smtp(
         recipients += bcc_addrs
 
     try:
-        with smtplib.SMTP("127.0.0.1", 1025) as smtp:
+        print(f"[Email Utils] Connecting to SMTP server at 127.0.0.1:{smtp_port}...")
+        with smtplib.SMTP("127.0.0.1", smtp_port) as smtp:
             smtp.send_message(msg, from_addr=from_addr, to_addrs=recipients)
+        print(f"[Email Utils] ✓ Email sent successfully, Message-ID: {mid}")
         return SendResult(True, mid)
     except Exception as e:
+        print(f"[Email Utils] ✗ Failed to send email: {e}")
         return SendResult(False, None, error=str(e))
 
 

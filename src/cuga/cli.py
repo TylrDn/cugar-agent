@@ -48,8 +48,13 @@ _playwright_thread: Optional[threading.Thread] = None
 _playwright_started: bool = False
 
 
-def kill_processes_by_port(ports: List[int]):
-    """Kill processes listening on specified ports."""
+def kill_processes_by_port(ports: List[int], silent: bool = False):
+    """Kill processes listening on specified ports.
+
+    Args:
+        ports: List of port numbers to check
+        silent: If True, don't log (useful when called from signal handlers)
+    """
     killed_any = False
     for port in ports:
         try:
@@ -63,9 +68,10 @@ def kill_processes_by_port(ports: List[int]):
 
                     for conn in connections:
                         if hasattr(conn, 'laddr') and conn.laddr and conn.laddr.port == port:
-                            logger.info(
-                                f"🔄 Killing existing process {proc.info['name']} (PID: {proc.info['pid']}) on port {port}"
-                            )
+                            if not silent:
+                                logger.info(
+                                    f"🔄 Killing existing process {proc.info['name']} (PID: {proc.info['pid']}) on port {port}"
+                                )
                             psutil.Process(proc.info['pid']).terminate()
                             killed_any = True
                             time.sleep(0.5)
@@ -76,11 +82,50 @@ def kill_processes_by_port(ports: List[int]):
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     continue
         except Exception as e:
-            logger.debug(f"Error killing processes on port {port}: {e}")
+            if not silent:
+                logger.debug(f"Error killing processes on port {port}: {e}")
 
     if killed_any:
-        logger.info("✨ Cleaned up existing processes")
+        if not silent:
+            logger.info("✨ Cleaned up existing processes")
         time.sleep(1)
+
+
+def wait_for_tcp_port(
+    port: int, server_name: str = "Server", max_retries: int = 20, retry_interval: float = 0.5
+):
+    """
+    Wait for a TCP port to be listening (useful for non-HTTP servers like SMTP).
+
+    Args:
+        port: The port number to check
+        server_name: Name of the server for logging (default: "Server")
+        max_retries: Maximum number of retry attempts (default: 20)
+        retry_interval: Time in seconds between retries (default: 0.5)
+
+    Raises:
+        TimeoutError: If the port doesn't become ready within max_retries attempts
+    """
+    import socket
+
+    for attempt in range(max_retries):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1)
+                result = s.connect_ex(('127.0.0.1', port))
+                if result == 0:
+                    logger.info(f"{server_name} is ready on port {port}!")
+                    return
+        except Exception:
+            pass
+
+        if attempt < max_retries - 1:
+            time.sleep(retry_interval)
+        else:
+            raise TimeoutError(
+                f"{server_name} did not become ready after {max_retries * retry_interval:.1f} seconds. "
+                f"Please check if the server started correctly on port {port}."
+            )
 
 
 def wait_for_server(
@@ -133,7 +178,10 @@ def wait_for_registry_server(port: int, max_retries: int = 120, retry_interval: 
 
 
 def kill_process_tree(pid):
-    """Kill a process and all its children."""
+    """Kill a process and all its children.
+
+    Note: No logging in this function to avoid deadlock when called from signal handler.
+    """
     try:
         parent = psutil.Process(pid)
         children = parent.children(recursive=True)
@@ -141,7 +189,6 @@ def kill_process_tree(pid):
         # Terminate children first
         for child in children:
             try:
-                logger.debug(f"Terminating child process {child.pid}")
                 child.terminate()
             except psutil.NoSuchProcess:
                 pass
@@ -153,23 +200,21 @@ def kill_process_tree(pid):
         for child in children:
             try:
                 if child.is_running():
-                    logger.debug(f"Force killing child process {child.pid}")
                     child.kill()
             except psutil.NoSuchProcess:
                 pass
 
         # Now terminate the parent
         try:
-            logger.debug(f"Terminating parent process {pid}")
             parent.terminate()
             parent.wait(timeout=3)
         except psutil.TimeoutExpired:
-            logger.debug(f"Force killing parent process {pid}")
             parent.kill()
     except psutil.NoSuchProcess:
         pass
-    except Exception as e:
-        logger.debug(f"Error killing process tree {pid}: {e}")
+    except Exception:
+        # Silently ignore errors to avoid deadlock in signal handler
+        pass
 
 
 def start_extension_browser_if_configured():
@@ -252,7 +297,6 @@ def start_extension_browser_if_configured():
 
 def signal_handler(signum, frame):
     """Handle SIGINT (Ctrl+C) to gracefully shutdown direct processes."""
-    logger.info("Received interrupt signal. Forcefully shutting down all processes...")
     shutdown_event.set()
 
     # Force stop direct processes
@@ -272,38 +316,47 @@ def signal_handler(signum, frame):
         ports_to_kill.append(settings.server_ports.apis_url)
 
     if ports_to_kill:
-        kill_processes_by_port(ports_to_kill)
+        kill_processes_by_port(ports_to_kill, silent=True)
 
-    logger.info("All processes stopped.")
+    # Don't use logger here - signal handlers can't safely use loguru
+    # Use print to stderr instead to avoid deadlock
+    print("All processes stopped.", file=sys.stderr)
     sys.exit(0)
 
 
 def stop_direct_processes():
-    """Stop all direct processes gracefully, then forcefully."""
+    """Stop all direct processes gracefully, then forcefully.
+
+    Note: No logging in this function to avoid deadlock when called from signal handler.
+    """
     for service_name, process in direct_processes.items():
         if process and process.poll() is None:
-            logger.info(f"Stopping {service_name}...")
             try:
                 # First try to kill the entire process tree
                 kill_process_tree(process.pid)
-            except Exception as e:
-                logger.error(f"Error stopping {service_name}: {e}")
+            except Exception:
                 # Fallback to original method
                 try:
                     process.terminate()
                     try:
                         process.wait(timeout=2)
                     except subprocess.TimeoutExpired:
-                        logger.warning(f"Force killing {service_name}...")
                         process.kill()
                         process.wait()
-                except Exception as e2:
-                    logger.error(f"Error in fallback kill for {service_name}: {e2}")
+                except Exception:
+                    # Silently ignore to avoid deadlock
+                    pass
 
     direct_processes.clear()
 
 
-def run_direct_service(service_name: str, command: List[str], cwd: Optional[str] = None):
+def run_direct_service(
+    service_name: str,
+    command: List[str],
+    cwd: Optional[str] = None,
+    log_file: Optional[str] = None,
+    env_vars: Optional[dict] = None,
+):
     """Run a service command directly and return the process."""
     try:
         logger.info(f"Starting {service_name} directly with command: {' '.join(command)}")
@@ -311,6 +364,10 @@ def run_direct_service(service_name: str, command: List[str], cwd: Optional[str]
         # Force colored output and ensure proper environment variables
         env = os.environ.copy()
         env['FORCE_COLOR'] = '1'
+
+        # Add any additional environment variables
+        if env_vars:
+            env.update(env_vars)
 
         # Ensure APPWORLD_ROOT is used only for appworld commands
         joined = ' '.join(command).lower()
@@ -325,6 +382,16 @@ def run_direct_service(service_name: str, command: List[str], cwd: Optional[str]
 
         # Start the process with a new process group to make it easier to kill
         kwargs = {'cwd': cwd, 'env': env, 'preexec_fn': os.setsid if not IS_WINDOWS else None}
+
+        # Redirect output to log file if provided
+        if log_file:
+            log_path = os.path.abspath(log_file)
+            log_dir = os.path.dirname(log_path)
+            os.makedirs(log_dir, exist_ok=True)
+            log_handle = open(log_path, 'a')
+            kwargs['stdout'] = log_handle
+            kwargs['stderr'] = subprocess.STDOUT
+            logger.info(f"Redirecting {service_name} output to {log_path}")
 
         process = subprocess.Popen(command, **kwargs)
 
@@ -602,16 +669,48 @@ def start(
             os.environ["CUGA_LOAD_POLICIES"] = "true"
             logger.info("📋 Policies configured for demo_crm")
 
+            # Set default CRM DB path with cwd if not already set
+            if "DYNACONF_CRM_DB_PATH" not in os.environ:
+                # Default: ${workdir}/crm_tmp/crm_db_default
+                workdir = os.getcwd()
+                crm_db_path = os.path.join(workdir, "crm_tmp", "crm_db_default")
+                crm_db_path = os.path.abspath(crm_db_path)
+                os.environ["DYNACONF_CRM_DB_PATH"] = crm_db_path
+            else:
+                crm_db_path = os.path.abspath(os.environ["DYNACONF_CRM_DB_PATH"])
+
+            # Clean up CRM DB path before starting
+            if os.path.exists(crm_db_path):
+                logger.info(f"🧹 Cleaning up existing CRM DB at {crm_db_path}")
+                try:
+                    os.remove(crm_db_path)
+                    logger.info("✅ CRM DB cleaned up")
+                except Exception as e:
+                    logger.warning(f"⚠️  Could not remove CRM DB: {e}")
+
+            # Ensure parent directory exists
+            parent_dir = os.path.dirname(crm_db_path)
+            if parent_dir:
+                os.makedirs(parent_dir, exist_ok=True)
+
+            # Clean up any existing processes on the ports we need
             # Clean up any existing processes on the ports we need
             logger.info("🧹 Checking for existing processes on required ports...")
+
+            # Define ports with env var support
+            crm_port = int(os.environ.get("DYNACONF_SERVER_PORTS__CRM_API", "8007"))
+            fs_port = int(os.environ.get("DYNACONF_SERVER_PORTS__FILESYSTEM_MCP", "8112"))
+            email_sink_port = int(os.environ.get("DYNACONF_SERVER_PORTS__EMAIL_SINK", "1025"))
+            email_mcp_port = int(os.environ.get("DYNACONF_SERVER_PORTS__EMAIL_MCP", "8000"))
+
             ports_to_clean = [
-                8007,  # CRM API
-                8112,  # Filesystem MCP SSE
+                crm_port,
+                fs_port,
                 settings.server_ports.registry,
                 settings.server_ports.demo,
             ]
             if not no_email:
-                ports_to_clean.extend([1025, 8000])  # Email sink SMTP, Email MCP SSE
+                ports_to_clean.extend([email_sink_port, email_mcp_port])
             kill_processes_by_port(ports_to_clean)
 
             # Set environment variable for host
@@ -628,30 +727,41 @@ def start(
 
             # Start email services if not disabled
             if not no_email:
+                # Get email service ports from environment or use defaults
+                email_sink_port = int(os.environ.get("DYNACONF_SERVER_PORTS__EMAIL_SINK", "1025"))
+                email_mcp_port = int(os.environ.get("DYNACONF_SERVER_PORTS__EMAIL_MCP", "8000"))
+                logger.info(f"Starting email services - Sink: {email_sink_port}, MCP: {email_mcp_port}")
+
                 # Start email sink first
                 run_direct_service(
                     "email-sink",
                     [
                         "uvx",
-                        "--refresh",
+                        "--no-cache",
                         "--from",
                         "./docs/examples/demo_apps/email_mcp/mail_sink",
                         "email_sink",
                     ],
+                    env_vars={"DYNACONF_SERVER_PORTS__EMAIL_SINK": str(email_sink_port)},
                 )
-                logger.info("Email sink started")
-                time.sleep(2)
+                logger.info("Email sink started, waiting for it to be ready...")
+                wait_for_tcp_port(email_sink_port, "Email sink", max_retries=20, retry_interval=0.5)
+                time.sleep(1)  # Extra buffer
 
-                # Start email MCP server
+                # Start email MCP server (needs to know both ports)
                 run_direct_service(
                     "email-mcp",
                     [
                         "uvx",
-                        "--refresh",
+                        "--no-cache",
                         "--from",
                         "./docs/examples/demo_apps/email_mcp/mcp_server",
                         "email_mcp",
                     ],
+                    env_vars={
+                        "DYNACONF_SERVER_PORTS__EMAIL_SINK": str(email_sink_port),
+                        "DYNACONF_SERVER_PORTS__EMAIL_MCP": str(email_mcp_port),
+                    },
                 )
                 logger.info("Email MCP server started")
                 time.sleep(2)
@@ -661,7 +771,7 @@ def start(
             # Start filesystem MCP server
             filesystem_cmd = [
                 "uvx",
-                "--refresh",
+                "--no-cache",
                 "--from",
                 "./docs/examples/demo_apps/file_system",
                 "filesystem-server",
@@ -669,23 +779,45 @@ def start(
             if read_only:
                 filesystem_cmd.append("--read-only")
             filesystem_cmd.append(workspace_path)
-            run_direct_service("filesystem-server", filesystem_cmd)
+            run_direct_service(
+                "filesystem-server",
+                filesystem_cmd,
+                env_vars={"DYNACONF_SERVER_PORTS__FILESYSTEM_MCP": str(fs_port)},
+            )
             logger.info("Filesystem MCP server started")
             time.sleep(2)
 
             # Start CRM API server
+            # Pass port as command-line argument to avoid uvx environment variable issues
+            crm_port = settings.server_ports.crm_api
+            logger.info(f"Starting CRM server on port {crm_port}")
+
             run_direct_service(
                 "crm-server",
-                ["uvx", "--refresh", "--from", "./docs/examples/demo_apps/crm", "crm-server"],
+                [
+                    "uvx",
+                    "--no-cache",
+                    "--from",
+                    "./docs/examples/demo_apps/crm",
+                    "crm-server",
+                    "--port",
+                    str(crm_port),
+                ],
+                env_vars={
+                    "DYNACONF_SERVER_PORTS__CRM_API": str(crm_port),
+                    "DYNACONF_CRM_DB_PATH": crm_db_path,
+                },
             )
             logger.info("CRM API server started")
-            time.sleep(10)
+            wait_for_server(crm_port, "CRM API server")
 
             # Start registry with CRM configuration
-            config_file = "mcp_servers_hf.yaml" if no_email else "mcp_servers_crm.yaml"
-            os.environ["MCP_SERVERS_FILE"] = os.path.join(
-                PACKAGE_ROOT, "backend", "tools_env", "registry", "config", config_file
-            )
+            # Only set MCP_SERVERS_FILE if not already set (e.g., by tests)
+            if "MCP_SERVERS_FILE" not in os.environ:
+                config_file = "mcp_servers_hf.yaml" if no_email else "mcp_servers_crm.yaml"
+                os.environ["MCP_SERVERS_FILE"] = os.path.join(
+                    PACKAGE_ROOT, "backend", "tools_env", "registry", "config", config_file
+                )
             registry_process = run_direct_service(
                 "registry",
                 [
@@ -778,10 +910,10 @@ def start(
                 services_table.add_column("Service", style="bold white", no_wrap=True)
                 services_table.add_column("URL", style="cyan")
                 if not no_email:
-                    services_table.add_row("• Email Sink", "smtp://localhost:1025")
-                    services_table.add_row("• Email MCP Server", "http://localhost:8000/sse")
-                services_table.add_row("• Filesystem MCP Server", "http://localhost:8112/sse")
-                services_table.add_row("• CRM API Server", "http://localhost:8007")
+                    services_table.add_row("• Email Sink", f"smtp://localhost:{email_sink_port}")
+                    services_table.add_row("• Email MCP Server", f"http://localhost:{email_mcp_port}/sse")
+                services_table.add_row("• Filesystem MCP Server", f"http://localhost:{fs_port}/sse")
+                services_table.add_row("• CRM API Server", f"http://localhost:{crm_port}")
                 services_table.add_row(
                     "• Registry Server", f"http://localhost:{settings.server_ports.registry}"
                 )

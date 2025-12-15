@@ -96,8 +96,8 @@ async def list_application_apis(app_name: str, include_response_schema: bool = F
     except HTTPException as e:
         raise e
     except Exception as e:
-        print(f"Error in list_application_apis: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error in list_application_apis for '{app_name}': {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {type(e).__name__}: {str(e)}")
 
 
 @app.get("/apis", tags=["APIs"])

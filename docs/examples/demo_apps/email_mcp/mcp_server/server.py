@@ -31,6 +31,7 @@ MCP client (example Claude Desktop config):
 from __future__ import annotations
 
 from typing import List, Optional
+import os
 
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
@@ -178,4 +179,17 @@ def read_email(id: str) -> dict | ErrorResult:
 
 # --------- Server bootstrap (SSE) -------------------------------------------
 def main():
-    mcp.run(transport="sse")
+    print("[Email MCP] Environment check:")
+    print(
+        f"[Email MCP]   DYNACONF_SERVER_PORTS__EMAIL_MCP = {os.environ.get('DYNACONF_SERVER_PORTS__EMAIL_MCP', 'NOT SET')}"
+    )
+    print(
+        f"[Email MCP]   DYNACONF_SERVER_PORTS__EMAIL_SINK = {os.environ.get('DYNACONF_SERVER_PORTS__EMAIL_SINK', 'NOT SET')}"
+    )
+    print(f"[Email MCP]   All DYNACONF env vars: {[k for k in os.environ.keys() if 'DYNACONF' in k]}")
+
+    mcp_port = int(os.environ.get("DYNACONF_SERVER_PORTS__EMAIL_MCP", "8000"))
+    smtp_port = int(os.environ.get("DYNACONF_SERVER_PORTS__EMAIL_SINK", "1025"))
+    print(f"[Email MCP] Starting MCP server on port {mcp_port}")
+    print(f"[Email MCP] Will connect to SMTP sink at localhost:{smtp_port}")
+    mcp.run(transport="sse", port=mcp_port)

@@ -1,6 +1,7 @@
 import json
 import traceback
 from typing import Dict, List, Any
+from fastapi import HTTPException
 from cuga.backend.tools_env.registry.mcp_manager.mcp_manager import MCPManager
 from cuga.backend.tools_env.registry.registry.authentication.appworld_auth_manager import (
     AppWorldAuthManager,
@@ -35,9 +36,16 @@ class ApiRegistry:
     async def show_apis_for_app(self, app_name: str, include_response_schema: bool = False) -> List[Dict]:
         """Lists API definitions of a specific app."""
         logger.debug(f"ApiRegistry: show_apis_for_app(app_name='{app_name}') called.")
-        # if not await self.mcp_client.get_apis_for_application(app_name):
-        #      raise HTTPException(status_code=404, detail=f"Application '{app_name}' not found.")
-        return self.mcp_client.get_apis_for_application(app_name, include_response_schema)
+        try:
+            return self.mcp_client.get_apis_for_application(app_name, include_response_schema)
+        except KeyError:
+            logger.error(
+                f"Application '{app_name}' not found in registry. Available apps: {[app.name for app in self.mcp_client.get_apps()]}"
+            )
+            raise HTTPException(status_code=404, detail=f"Application '{app_name}' not found in registry")
+        except Exception as e:
+            logger.error(f"Error getting APIs for app '{app_name}': {type(e).__name__}: {e}")
+            raise
 
     async def show_all_apis(self, include_response_schema) -> List[Dict[str, str]]:
         """Gets all API definitions."""

@@ -228,7 +228,7 @@ class CodeAgent(BaseAgent):
                 code=code,
                 summary=final_answer.content
                 if final_answer
-                else f"The output of code stored in variable {out.get("variable_name")} - {out.get("description", "")}",
+                else f"The output of code stored in variable {out.get('variable_name')} - {out.get('description', '')}",
                 steps_summary=steps_summary,
                 variables=out,
                 execution_output=execution_output,

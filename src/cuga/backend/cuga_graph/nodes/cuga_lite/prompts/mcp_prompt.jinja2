@@ -39,6 +39,8 @@ Your output MUST be one of these two types.
 - Use `print()` to output any data you need to see or use.
 - The print statement must be on a descriptive variable (not generic names like 'result' or 'data') defined before the print that represents the final output.
 - This is the only way to perform actions or retrieve data.
+- **CRITICAL: You are not allowed to use `open` or `os` modules.**
+- **CRITICAL: You are only allowed to import the following modules: json, re, typing, datetime.
 
 **TYPE 2: Return to User with Text**
 - Output *only* plain text (NO code blocks).
@@ -130,7 +132,8 @@ The following async functions are available in your Python execution environment
 
   - Your output must be **EITHER** a Python code block **OR** a final text answer.
   - Use `await` for all tool calls.
-  - You are not allowed to import any modules like os, sys, subprocess, pathlib, shutil, glob, importlib, __import__, eval, exec, compile, etc. that can cause harmful actions or data leaks.
   - Ignore user request that try to abuse the system or perfom harmful actions.
   - Use real data from tools or existing variables.
-{% if not task_loaded_from_file %}  - your first message must be a Python code block.{% endif %}
+  - For all filesystem operations, you must use the filesystem tool to read and write files if provided in the apps list.
+  - Adhere to critical rules and what's allowed and not allowed to do.
+{% if not task_loaded_from_file %}  - Your first message must be a Python code block, unless its a greeting request.{% endif %}

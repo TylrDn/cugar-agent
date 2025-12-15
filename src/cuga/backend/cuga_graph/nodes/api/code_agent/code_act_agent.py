@@ -8,6 +8,7 @@ from typing import Any, Awaitable, Callable, Optional, Sequence, Type, TypeVar, 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import StructuredTool
 from langchain_core.tools import tool as create_tool
+from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.types import Command
 import json
@@ -234,6 +235,9 @@ def create_codeact(
         code = extract_and_combine_codeblocks(content)
         if code:
             tracker.collect_step(step=Step(name="Assistant_code", data=content))
+            logger.debug(
+                f"\n{'=' * 50} ASSISTANT CODE {'=' * 50}\n{code}\n{'=' * 50} END ASSISTANT CODE {'=' * 50}"
+            )
             return Command(goto="sandbox", update={"messages": [response], "script": code})
         else:
             # No code block found - check if asking to proceed
@@ -250,12 +254,16 @@ def create_codeact(
     # If eval_fn is a async, we define async node function.
     if inspect.iscoroutinefunction(eval_fn):
 
-        async def sandbox(state: StateSchema):
+        async def sandbox(state: StateSchema, config: Optional[RunnableConfig] = None):
             existing_context = state.get("context", {})
             context = {**existing_context, **tools_context}
             # Execute the script in the sandbox
-
-            output, new_vars = await eval_fn(state["script"], context)
+            # Pass config to eval_fn if it accepts it
+            eval_fn_sig = inspect.signature(eval_fn)
+            if 'config' in eval_fn_sig.parameters:
+                output, new_vars = await eval_fn(state["script"], context, config=config)
+            else:
+                output, new_vars = await eval_fn(state["script"], context)
             tracker.collect_step(step=Step(name="User_output", data=output))
             tracker.collect_step(step=Step(name="User_output_variables", data=json.dumps(new_vars)))
 
@@ -293,11 +301,16 @@ def create_codeact(
             }
     else:
 
-        def sandbox(state: StateSchema):
+        def sandbox(state: StateSchema, config: Optional[RunnableConfig] = None):
             existing_context = state.get("context", {})
             context = {**existing_context, **tools_context}
             # Execute the script in the sandbox
-            output, new_vars = eval_fn(state["script"], context)
+            # Pass config to eval_fn if it accepts it
+            eval_fn_sig = inspect.signature(eval_fn)
+            if 'config' in eval_fn_sig.parameters:
+                output, new_vars = eval_fn(state["script"], context, config=config)
+            else:
+                output, new_vars = eval_fn(state["script"], context)
             new_context = {**existing_context, **new_vars}
             # Return execution output as a user message so the model sees it
             return {

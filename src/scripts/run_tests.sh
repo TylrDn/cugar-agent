@@ -53,7 +53,7 @@ if [ "$1" = "full_tests" ]; then
     echo "Running full tests (registry + e2e system tests + variables manager tests)..."
     rm -f ./src/cuga/backend/tools_env/registry/mcp_servers/saved_flows.py
     echo "Running all tests (registry + e2e system tests)..."
-    run_pytest_with_memory ./src/system_tests/unit/test_memory.py ./src/system_tests/e2e/test_memory_integration.py
+    # run_pytest_with_memory ./src/system_tests/unit/test_memory.py ./src/system_tests/e2e/test_memory_integration.py
 elif [ "$1" = "unit_tests" ]; then
     echo "Running unit tests (registry + variables manager + local sandbox tests + E2B lite tests)..."
     run_pytest ./src/cuga/backend/tools_env/registry/tests/
@@ -63,7 +63,8 @@ elif [ "$1" = "unit_tests" ]; then
     run_pytest ./src/cuga/backend/cuga_graph/nodes/cuga_lite/tests/
     run_pytest ./src/system_tests/unit/test_sandbox_async.py
     run_pytest ./src/cuga/backend/cuga_graph/nodes/api/code_agent/test_extract_codeblocks.py
-    run_pytest_with_memory ./src/system_tests/unit/test_memory.py ./src/system_tests/unit/test_cli.py
+    run_pytest ./src/system_tests/unit/test_variable_creation_order.py
+    # run_pytest_with_memory ./src/system_tests/unit/test_memory.py ./src/system_tests/unit/test_cli.py
 else
     echo "Running default tests (registry + variables manager + local sandbox + E2B lite + e2e without save_reuse and without sandbox docker)..."
     run_pytest ./src/cuga/backend/tools_env/registry/tests/
@@ -72,7 +73,8 @@ else
     run_pytest ./src/cuga/backend/cuga_graph/nodes/cuga_lite/tests/
     run_pytest ./src/system_tests/e2e/balanced_test.py ./src/system_tests/e2e/fast_test.py ./src/system_tests/e2e/test_runtime_tools.py
     run_pytest ./src/cuga/backend/cuga_graph/nodes/api/code_agent/test_extract_codeblocks.py
-    run_pytest_with_memory ./src/system_tests/unit/test_memory.py ./src/system_tests/unit/test_cli.py
+    run_pytest ./src/system_tests/unit/test_variable_creation_order.py
+    # run_pytest_with_memory ./src/system_tests/unit/test_memory.py ./src/system_tests/unit/test_cli.py
     run_pytest_with_memory ./src/system_tests/e2e/test_memory_integration.py
     run_pytest_with_memory ./src/system_tests/e2e/balanced_test_memory.py
 

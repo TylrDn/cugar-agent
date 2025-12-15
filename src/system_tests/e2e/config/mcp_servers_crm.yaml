@@ -1,9 +1,11 @@
 services:
   - crm:
-      url: http://0.0.0.0:8007/openapi.json
+      url: http://localhost:${DYNACONF_SERVER_PORTS__CRM_API}/openapi.json
       description: CRM API provides sales professionals with a unified interface to access territory accounts, retrieve client information from TPP, manage job roles, and synchronize contacts between Zoominfo and Salesloft—streamlining the process of managing customer relationships and sales data across multiple platforms.
 mcpServers:
   filesystem:
-    url: http://localhost:8112/sse
+    url: http://localhost:${DYNACONF_SERVER_PORTS__FILESYSTEM_MCP}/sse
     description: Standard file system operations for workspace management
-
+  email:
+    url: http://localhost:${DYNACONF_SERVER_PORTS__EMAIL_MCP}/sse
+    description: standard email server connected to the user's email.

@@ -21,6 +21,7 @@ from langchain_core.callbacks.usage import UsageMetadataCallbackHandler
 from langchain_core.tools import StructuredTool
 from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
 from langchain_core.prompts import PromptTemplate
+from cuga.backend.cuga_graph.state.agent_state import AgentState
 
 try:
     from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler
@@ -190,7 +191,6 @@ class CugaAgent:
         instructions: Optional[str] = None,
         task_loaded_from_file: bool = False,
         is_autonomous_subtask: bool = False,
-        state: Optional[Any] = None,
     ):
         """
         Initialize CugaAgent.
@@ -207,7 +207,6 @@ class CugaAgent:
             instructions: Optional special instructions to include in the system prompt.
             task_loaded_from_file: If True, indicates that the task was loaded from a file (e.g., markdown file).
             is_autonomous_subtask: If True, indicates this is an autonomous subtask that should complete without user interaction.
-            state: Optional AgentState instance. If provided, uses state.variables_manager for variable management.
         """
         self.tool_provider = tool_provider
         self.model_settings = model_settings
@@ -219,7 +218,7 @@ class CugaAgent:
         self.task_loaded_from_file = task_loaded_from_file
         self.is_autonomous_subtask = is_autonomous_subtask
         self.prompt_template = prompt_template
-        self.state = state
+        self.prompt_template = prompt_template
         self.apps: List[AppDefinition] = []
         self.tools: List[StructuredTool] = []
         self.agent = None
@@ -291,13 +290,20 @@ class CugaAgent:
         else:
             base_eval_fn = eval_with_tools_async
 
-        # Wrap eval function to pass thread_id, apps_list, and state from instance
-        async def eval_function_with_thread(code: str, context: dict) -> tuple:
-            """Wrapper that passes thread_id, apps_list, and state to eval function."""
-            thread_id = getattr(self, 'thread_id', None)
-            apps_list = [app.name for app in self.apps] if self.apps else None
-            state = getattr(self, 'state', None)
-            return await base_eval_fn(code, context, thread_id=thread_id, apps_list=apps_list, state=state)
+        # Wrap eval function to pass thread_id, apps_list, and state from configurable runtime
+        async def eval_function_with_thread(code: str, context: dict, config=None) -> tuple:
+            """Wrapper that passes thread_id, apps_list, and state to eval function from configurable runtime."""
+            if config:
+                configurable = config.get("configurable", {})
+                thread_id = configurable.get("thread_id")
+                apps_list = configurable.get("apps_list")
+                state = configurable.get("state")
+            else:
+                # Fallback to instance attributes for backward compatibility (state only from config in execute)
+                thread_id = getattr(self, 'thread_id', None)
+                apps_list = [app.name for app in self.apps] if self.apps else None
+                state = None  # State is only passed via config in execute, not from instance
+            return await base_eval_fn(code, context, state=state, thread_id=thread_id, apps_list=apps_list)
 
         agent_graph = create_codeact(
             model=model, tools=self.tools, eval_fn=eval_function_with_thread, prompt=custom_prompt
@@ -315,8 +321,9 @@ class CugaAgent:
         state_messages: Optional[List] = None,
         chat_messages: Optional[List[BaseMessage]] = None,
         initial_context: Optional[Dict[str, Any]] = None,
-        keep_last_n_vars: int = 4,
+        keep_last_n_vars: int = 5,
         thread_id: Optional[str] = None,
+        state: Optional[AgentState] = None,
     ) -> Tuple[str, Dict[str, Any], Optional[List], Optional[List[BaseMessage]]]:
         """
         Execute a task using the CodeAct agent.
@@ -337,9 +344,6 @@ class CugaAgent:
         if not self.initialized:
             raise Exception("Agent not initialized. Call await agent.initialize() first")
 
-        # Store thread_id for use in eval function
-        self.thread_id = thread_id
-
         if show_progress:
             print(f"\n{'=' * 60}")
             print(f"🚀 CugaAgent executing: {task}")
@@ -358,7 +362,18 @@ class CugaAgent:
             if show_progress:
                 print("🔍 Langfuse tracing enabled")
 
-        config = {"thread_id": thread_id or 1, "recursion_limit": recursion_limit, "callbacks": callbacks}
+        # Prepare configurable runtime values for eval function
+        apps_list = [app.name for app in self.apps] if self.apps else None
+        config = {
+            "thread_id": thread_id or 1,
+            "recursion_limit": recursion_limit,
+            "callbacks": callbacks,
+            "configurable": {
+                "thread_id": thread_id,
+                "apps_list": apps_list,
+                "state": state,
+            },
+        }
 
         initial_messages = []
         if chat_messages:
@@ -379,7 +394,7 @@ class CugaAgent:
         task_content = task
 
         if initial_context and not chat_messages:
-            var_manager = self.state.variables_manager if self.state is not None else VariablesManager()
+            var_manager = state.variables_manager
             for var_name, var_value in initial_context.items():
                 var_manager.add_variable(
                     var_value, name=var_name, description="Passed from previous execution"
@@ -388,7 +403,7 @@ class CugaAgent:
             variable_names = list(initial_context.keys())
             if variable_names:
                 variables_summary = var_manager.get_variables_summary(variable_names=variable_names)
-                task_content = f"{task}\n\n## Available Variables\n\n{variables_summary}"
+                task_content = f"{task}\n\n## Available Variables\n\n{variables_summary}\n\nYou can use these variables directly by their names."
                 logger.info(
                     f"Added variables summary for {len(variable_names)} variables to first user message"
                 )
@@ -567,8 +582,8 @@ class CugaAgent:
                                 final_context[var_name] = value
 
                         # Remove newly created variables that are not being kept from var_manager
-                        if self.state is not None:
-                            var_manager = self.state.variables_manager
+                        if state is not None:
+                            var_manager = state.variables_manager
                             vars_to_remove = new_var_names[:-keep_last_n_vars]  # All except last N new vars
                             for var_name in vars_to_remove:
                                 if var_manager.remove_variable(var_name):
@@ -710,12 +725,16 @@ def _filter_new_variables(all_locals: dict[str, Any], original_keys: set[str]) -
         original_keys: Set of keys that existed before execution
 
     Returns:
-        Dictionary of new serializable variables
+        Dictionary of new serializable variables (preserves insertion order)
     """
     new_keys = set(all_locals.keys()) - original_keys
     new_vars = {}
 
-    for key in new_keys:
+    # Iterate over all_locals.keys() to preserve insertion order (creation order)
+    # rather than iterating over the set which doesn't maintain order
+    for key in all_locals.keys():
+        if key not in new_keys:
+            continue
         # Skip internal variables
         if key.startswith('_'):
             continue
@@ -999,9 +1018,9 @@ if __name__ == "__main__":
 async def eval_with_tools_async(
     code: str,
     _locals: dict[str, Any],
+    state: AgentState,
     thread_id: str = None,
     apps_list: List[str] = None,
-    state: Optional[Any] = None,
 ) -> tuple[str, dict[str, Any]]:
     """Execute code with async tools available in the local namespace.
 
@@ -1026,6 +1045,7 @@ async def eval_with_tools_async(
         'json',
         'pandas',
         'numpy',
+        'statistics',
         'datetime',
         'math',
         'collections',
@@ -1271,9 +1291,36 @@ async def __async_main():
     # Filter new variables
     new_vars = _filter_new_variables(_locals, original_keys)
 
+    # Find last print line and move variables that appear in it to the end
+    if new_vars:
+        lines = code.strip().split('\n')
+        # Find last line with print(
+        last_print_line = None
+        for line in reversed(lines):
+            stripped = line.strip()
+            if 'print(' in stripped:
+                last_print_line = stripped
+                break
+
+        # Reorder new_vars: move variables that appear in last_print_line to the end
+        if last_print_line:
+            reordered_vars = {}
+            print_vars = {}
+
+            for var_name, var_value in new_vars.items():
+                # If variable name appears in last print line and is more than 3 letters, move to end
+                if var_name in last_print_line and len(var_name) > 3:
+                    print_vars[var_name] = var_value
+                else:
+                    reordered_vars[var_name] = var_value
+
+            # Add print vars at the end
+            reordered_vars.update(print_vars)
+            new_vars = reordered_vars
+
     # Add new variables to VariablesManager and get their preview
     if new_vars:
-        var_manager = state.variables_manager if state is not None else VariablesManager()
+        var_manager = state.variables_manager
         for var_name, var_value in new_vars.items():
             var_manager.add_variable(var_value, name=var_name, description="Created during code execution")
 

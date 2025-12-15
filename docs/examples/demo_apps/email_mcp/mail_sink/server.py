@@ -34,6 +34,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, List, Tuple, Optional
+import os
 
 from aiosmtpd.controller import Controller
 from aiosmtpd.handlers import AsyncMessage
@@ -189,17 +190,32 @@ class SinkHandler(AsyncMessage):
 
 async def main_base():
     handler = SinkHandler()
-    controller = Controller(handler, hostname="127.0.0.1", port=1025)
+    # Log all environment variables related to ports
+    print("[Email Sink] Environment check:")
+    print(
+        f"[Email Sink]   DYNACONF_SERVER_PORTS__EMAIL_SINK = {os.environ.get('DYNACONF_SERVER_PORTS__EMAIL_SINK', 'NOT SET')}"
+    )
+    print(f"[Email Sink]   All DYNACONF env vars: {[k for k in os.environ.keys() if 'DYNACONF' in k]}")
+
+    smtp_port = int(os.environ.get("DYNACONF_SERVER_PORTS__EMAIL_SINK", "1025"))
+    print(f"[Email Sink] Using port: {smtp_port}")
+
+    controller = Controller(handler, hostname="127.0.0.1", port=smtp_port)
     controller.start()
-    print("SMTP sink listening on smtp://127.0.0.1:1025 (Ctrl+C to stop)")
+    print(
+        f"[Email Sink] ✓ SMTP sink successfully started and listening on smtp://127.0.0.1:{smtp_port} (Ctrl+C to stop)"
+    )
+    print("[Email Sink] Ready to receive emails")
     try:
         # Run forever
         while True:
             await asyncio.sleep(3600)
     except (KeyboardInterrupt, SystemExit):
+        print("[Email Sink] Shutting down...")
         pass
     finally:
         controller.stop()
+        print("[Email Sink] Stopped")
 
 
 def main():

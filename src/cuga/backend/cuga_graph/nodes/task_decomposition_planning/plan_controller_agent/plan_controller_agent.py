@@ -72,7 +72,7 @@ class PlanControllerAgent(BaseAgent):
         data["task_decomposition"] = task_input["task_decomposition"]
         data["stm_all_history"] = task_input["stm_all_history"]
         data["sub_tasks_progress"] = input_variables.sub_tasks_progress or []
-        data["variables_history"] = input_variables.variables_manager.get_variables_summary(last_n=8)
+        data["variables_history"] = input_variables.variables_manager.get_variables_summary(last_n=15)
         logger.info(
             f"Variables history being passed to prompt (length: {len(data['variables_history'])} chars):"
         )

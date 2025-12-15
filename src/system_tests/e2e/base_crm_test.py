@@ -12,6 +12,8 @@ class BaseCRMTestServerStream(BaseTestServerStream):
     Uses a single demo_crm command that starts all necessary services.
     """
 
+    mode = "default"
+
     async def asyncSetUp(self):
         """
         Sets up the test environment for CRM tests.
@@ -27,14 +29,16 @@ class BaseCRMTestServerStream(BaseTestServerStream):
         print("Cleaning up any existing processes on target ports...")
         self._kill_process_by_port(settings.server_ports.demo, "demo server")
         self._kill_process_by_port(settings.server_ports.registry, "registry")
-        self._kill_process_by_port(8007, "CRM API")
-        self._kill_process_by_port(8112, "filesystem server")
+        self._kill_process_by_port(settings.server_ports.crm_api, "CRM API")
+        self._kill_process_by_port(settings.server_ports.filesystem_mcp, "filesystem server")
 
         await asyncio.sleep(2)
 
         # Set MCP servers file for CRM configuration
         os.environ["MCP_SERVERS_FILE"] = os.path.join(
-            os.path.dirname(__file__), "config", "mcp_servers_crm.yaml"
+            os.path.dirname(__file__),
+            "config",
+            "mcp_servers_crm_hf.yaml" if self.mode == "hf" else "mcp_servers_crm.yaml",
         )
         print(f"Set MCP_SERVERS_FILE to: {os.environ['MCP_SERVERS_FILE']}")
 
@@ -52,8 +56,9 @@ class BaseCRMTestServerStream(BaseTestServerStream):
         self.demo_log_handle = open(self.demo_log_file, 'w', buffering=1)
 
         # Start demo_crm which includes all necessary services
-        print("Starting demo_crm with --no-email and --read-only flags...")
-        demo_crm_command = ["uv", "run", "cuga", "start", "demo_crm", "--no-email", "--read-only"]
+        demo_crm_command = ["uv", "run", "cuga", "start", "demo_crm"]
+        if self.mode in ("hf"):
+            demo_crm_command.extend(["--no-email", "--read-only"])
         self.demo_process = subprocess.Popen(
             demo_crm_command,
             stdout=self.demo_log_handle,
@@ -104,8 +109,8 @@ class BaseCRMTestServerStream(BaseTestServerStream):
         print("Cleaning up any remaining processes on target ports...")
         self._kill_process_by_port(settings.server_ports.demo, "demo server")
         self._kill_process_by_port(settings.server_ports.registry, "registry")
-        self._kill_process_by_port(8007, "CRM API")
-        self._kill_process_by_port(8112, "filesystem server")
+        self._kill_process_by_port(settings.server_ports.crm_api, "CRM API")
+        self._kill_process_by_port(settings.server_ports.filesystem_mcp, "filesystem server")
 
         print("All processes stopped.")
         print("--- CRM test environment teardown complete ---")

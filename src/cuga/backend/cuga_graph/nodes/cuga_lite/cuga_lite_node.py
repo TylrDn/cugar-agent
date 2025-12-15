@@ -101,9 +101,7 @@ class CugaLiteNode(BaseNode):
             logger.error(f"Exception reading file {file_path}: {e}")
             return None
 
-    async def create_agent(
-        self, app_names=None, task_loaded_from_file=False, is_autonomous_subtask=False, state=None
-    ):
+    async def create_agent(self, app_names=None, task_loaded_from_file=False, is_autonomous_subtask=False):
         """Create and initialize a new CugaAgent with optional app filtering."""
         logger.info("Initializing new CugaLite agent instance...")
 
@@ -122,7 +120,6 @@ class CugaLiteNode(BaseNode):
             task_loaded_from_file=task_loaded_from_file,
             is_autonomous_subtask=is_autonomous_subtask,
             prompt_template=self.prompt_template,
-            state=state,
         )
         await agent.initialize()
         logger.info(f"CugaLite agent initialized with {len(agent.tools)} tools")
@@ -197,7 +194,6 @@ class CugaLiteNode(BaseNode):
             app_names=app_names,
             task_loaded_from_file=task_loaded_from_file,
             is_autonomous_subtask=is_autonomous_subtask,
-            state=state,
         )
 
         # Add execution start message
@@ -248,6 +244,7 @@ class CugaLiteNode(BaseNode):
             chat_messages=chat_messages_to_pass,
             initial_context=initial_context,
             thread_id=state.thread_id,  # Pass thread_id for E2B sandbox caching
+            state=state,
         )
         logger.info(
             f"After execute: updated_chat_messages has {len(updated_chat_messages) if updated_chat_messages is not None else 'None'} messages"

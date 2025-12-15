@@ -40,7 +40,6 @@ class CugaAgent(BaseCugaAgent):
         task_loaded_from_file: bool = False,
         is_autonomous_subtask: bool = False,
         prompt_template: Optional[PromptTemplate] = None,
-        state: Optional[Any] = None,
     ):
         """Initialize CugaAgent.
 
@@ -62,7 +61,6 @@ class CugaAgent(BaseCugaAgent):
             task_loaded_from_file=task_loaded_from_file,
             is_autonomous_subtask=is_autonomous_subtask,
             prompt_template=prompt_template,
-            state=state,
         )
         self.app_names = app_names
 

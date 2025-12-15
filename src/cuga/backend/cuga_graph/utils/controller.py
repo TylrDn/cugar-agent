@@ -93,10 +93,8 @@ class AgentRunner:
             enable_nocodeui_pu=True,
             pw_extra_args=[
                 *settings.get("PLAYWRIGHT_ARGS", []),
-                f"--disable-extensions-except={os.path.join(PACKAGE_ROOT, "./cuga/backend/browser_env/browser/nocodeui_obs/prod")}",
-                f"--load-extension={
-                    os.path.join(PACKAGE_ROOT, "./cuga/backend/browser_env/browser/nocodeui_obs/prod")
-                }",
+                f"--disable-extensions-except={os.path.join(PACKAGE_ROOT, './cuga/backend/browser_env/browser/nocodeui_obs/prod')}",
+                f"--load-extension={os.path.join(PACKAGE_ROOT, './cuga/backend/browser_env/browser/nocodeui_obs/prod')}",
             ],
         )
 

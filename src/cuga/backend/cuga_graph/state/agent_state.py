@@ -157,7 +157,14 @@ class VariablesManager(object):
 
         self.variables[name] = VariableMetadata(value, description)
 
-        if name not in self._creation_order:
+        # Update creation order: if variable exists, move it to end (last updated)
+        # If it's new, append it to the end
+        if name in self._creation_order:
+            # Move existing variable to end (indicates it was last updated)
+            self._creation_order.remove(name)
+            self._creation_order.append(name)
+        else:
+            # New variable, append to end
             self._creation_order.append(name)
 
         operation = "➕ Variable Added" if is_new else "🔄 Variable Updated"
@@ -813,10 +820,53 @@ class StateVariablesManager(VariablesManager):
             'count_items': metadata.count_items,
         }
 
-        if name not in self.state.variable_creation_order:
+        # Update creation order: if variable exists, move it to end (last updated)
+        # If it's new, append it to the end
+        if name in self.state.variable_creation_order:
+            # Move existing variable to end (indicates it was last updated)
+            self.state.variable_creation_order.remove(name)
+            self.state.variable_creation_order.append(name)
+        else:
+            # New variable, append to end
             self.state.variable_creation_order.append(name)
 
         return name
+
+    def remove_variable(self, name: str) -> bool:
+        """
+        Remove a variable by name.
+
+        Args:
+            name (str): The name of the variable to remove
+
+        Returns:
+            bool: True if variable was removed, False if not found
+        """
+        if name in self.state.variables_storage:
+            storage_item = self.state.variables_storage[name]
+            var_type = storage_item['type']
+            var_value_preview = self._get_value_preview(storage_item['value'], max_length=100)
+
+            del self.state.variables_storage[name]
+            if name in self.state.variable_creation_order:
+                self.state.variable_creation_order.remove(name)
+
+            details = f"Removed **{name}** (`{var_type}`)"
+            extra_info = f'''
+### Removed Variable
+- **Name:** `{name}`
+- **Type:** `{var_type}`
+- **Value Preview:** `{var_value_preview}`
+
+### Remaining State
+- **Total Variables:** {len(self.state.variables_storage)}
+- **Variables:** {', '.join(f'`{v}`' for v in self.state.variable_creation_order) if self.state.variable_creation_order else 'None'}
+'''
+            self._log_operation("➖ Variable Removed", details, extra_info)
+            return True
+        else:
+            self._log_operation("⚠️ Remove Failed", f"Variable **{name}** not found", None)
+            return False
 
 
 class Prediction(BaseModel):

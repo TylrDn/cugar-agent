@@ -14,8 +14,10 @@ from fastmcp.server.openapi import (
     OpenAPIResourceTemplate,
 )
 
+import os
+
 # Configuration
-API_BASE_URL = "http://localhost:8007"
+API_BASE_URL = f"http://localhost:{os.environ.get('DYNACONF_SERVER_PORTS__CRM_API', '8007')}"
 OPENAPI_SPEC_URL = f"{API_BASE_URL}/openapi.json"
 
 
@@ -63,7 +65,7 @@ def main():
     mcp = create_mcp_server()
     print("Starting FastMCP server...")
     print("Server must be running before starting the main application.")
-    mcp.run(transport="sse", port=8111)
+    mcp.run(transport="sse", port=int(os.environ.get("DYNACONF_SERVER_PORTS__CRM_MCP", "8111")))
 
 
 if __name__ == "__main__":

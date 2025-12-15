@@ -1,4 +1,4 @@
 services:
   - digital_sales:
-      url: http://localhost:8000/openapi.json
+      url: http://localhost:${DYNACONF_SERVER_PORTS__DIGITAL_SALES_API}/openapi.json
       description: This Digital Sales Skills API provides sales professionals with a unified interface to access territory accounts, retrieve client information from TPP, manage job roles, and synchronize contacts between Zoominfo and Salesloft—streamlining the process of managing customer relationships and sales data across multiple platforms.

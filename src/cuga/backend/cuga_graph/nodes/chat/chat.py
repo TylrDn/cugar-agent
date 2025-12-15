@@ -174,8 +174,8 @@ class ChatNode(BaseNode):
             variables_rel = res.tool_calls[0].get("args").get("relevant_variables")
             if variables_rel and len(variables_rel) > 0:
                 state.input = (
-                    f"task: {res.tool_calls[0].get("args").get("task")}"
-                    + f"\n relevant variables from history: {res.tool_calls[0].get("args").get("relevant_variables")}"
+                    f"task: {res.tool_calls[0].get('args').get('task')}"
+                    + f"\n relevant variables from history: {res.tool_calls[0].get('args').get('relevant_variables')}"
                 )
             else:
                 state.input = res.tool_calls[0].get("args").get("task")
