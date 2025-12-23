@@ -126,6 +126,7 @@ validators = [
     Validator("advanced_features.decomposition_strategy", default="flexible"),
     Validator("advanced_features.local_sandbox", default=True),
     Validator("advanced_features.message_window_limit", default=20),
+    Validator("advanced_features.enable_altk_lifecycle", default=False),
     Validator("advanced_features.max_input_length", default=50000),
     Validator("advanced_features.e2b_sandbox_mode", default="per-session"),
     Validator("advanced_features.enable_web_search", default=False),

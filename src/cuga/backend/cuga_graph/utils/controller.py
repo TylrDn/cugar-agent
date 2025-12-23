@@ -23,6 +23,7 @@ from cuga.backend.cuga_graph.utils.agent_loop import AgentLoop, AgentLoopAnswer,
 from cuga.config import get_app_name_from_url, settings, PACKAGE_ROOT
 from loguru import logger
 from langchain_core.messages import ToolCall
+from cuga.backend.altk_components import ALTKLifecycleManager
 
 try:
     from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler
@@ -190,6 +191,10 @@ class AgentRunner:
             langfuse_handler = LangfuseCallbackHandler()
             logger.debug("Langfuse tracing enabled for agent loop")
 
+        lifecycle_manager = ALTKLifecycleManager.from_settings(
+            settings.advanced_features.enable_altk_lifecycle
+        )
+
         agent = DynamicAgentGraph(None, langfuse_handler=langfuse_handler)
         await agent.build_graph()
         state: AgentState = default_state(
@@ -200,12 +205,15 @@ class AgentRunner:
         state.sites = sites
         await self.browser_update_state(state)
 
+        lifecycle_manager.enhance_state_prompt(state)
+
         self.agent_loop_obj = AgentLoop(
             thread_id=self.thread_id,
             langfuse_handler=langfuse_handler,
             graph=agent.graph,
             env_pointer=self.env,
             tracker=tracker,
+            lifecycle_manager=lifecycle_manager,
         )
         state.current_datetime = current_datetime if current_datetime else datetime.datetime.now().isoformat()
         state.pi = tracker.pi
@@ -216,6 +224,10 @@ class AgentRunner:
             if agent_response.has_tools:
                 i += 1
                 state = self.get_current_state()
+                if lifecycle_manager.enabled:
+                    state.messages[-1].tool_calls = lifecycle_manager.validate_tool_calls(
+                        state.messages[-1].tool_calls
+                    )
                 feedback = await AgentRunner.process_event_async(
                     state.messages[-1].tool_calls,
                     state.elements,
@@ -224,6 +236,17 @@ class AgentRunner:
                     session_id=session_id,
                     tool_provider=self.env.tool_implementation_provider,
                 )
+                if lifecycle_manager.enabled:
+                    review = lifecycle_manager.review_tool_outputs(feedback)
+                    if review and review.get("details"):
+                        state.feedback.append(
+                            {
+                                "status": "review",
+                                "message": "ALTK Silent Review feedback",
+                                "details": review["details"],
+                                "needs_retry": review.get("needs_retry", False),
+                            }
+                        )
                 state.feedback = state.feedback + feedback
                 if len(feedback) > 0 and feedback[-1]['status'] == "alert":
                     logger.warning(f"Adding to stm the alert {feedback[-1]['message']}")
