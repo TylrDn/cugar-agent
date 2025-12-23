@@ -4,7 +4,7 @@ import os
 import tomllib
 from typing import Dict, Optional
 
-from pydantic import BaseModel, Field, ValidationError
+from cuga.compat.pydantic_stub import BaseModel, Field, ValidationError
 
 from cuga.mcp.interfaces import ToolSpec
 
