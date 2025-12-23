@@ -1,0 +1,5 @@
+---
+services:
+  - trading_api:
+      url: "${TRADING_OPENAPI_URL:-http://localhost:9001/openapi.json}"
+      description: Placeholder trading OpenAPI (read-only by default)

@@ -55,3 +55,5 @@ cuga.egg-info
 
 # IDE and editor files
 .cursor/
+.env.local
+.env.secrets

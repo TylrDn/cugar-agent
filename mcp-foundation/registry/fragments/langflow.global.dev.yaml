@@ -1,0 +1,10 @@
+---
+mcpServers:
+  langflow_global:
+    transport: http
+    url: "${LF_SERVER:-http://localhost:7860}/api/v1/mcp/streamable"
+    headers:
+      x-api-key: "${LF_API_KEY:-}"
+    description: Langflow global MCP (DEV, HTTP). Exposes enabled flows as tools.
+
+services: []
