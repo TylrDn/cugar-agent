@@ -52,6 +52,9 @@ CUGA achieves state-of-the-art performance on leading benchmarks:
 
 - **Save-and-reuse capabilities** _(Experimental)_ — Capture and reuse successful execution paths (plans, code, and trajectories) for faster and consistent behavior across repeated tasks
 
+### 🔌 MCP integration roadmap
+- A registry- and lifecycle-driven MCP tool layer with stdio runner, pooling, retries, and structured logs has been added as an opt-in slice. See [`docs/mcp_integration.md`](docs/mcp_integration.md) for design notes and configuration examples.
+
 Explore the [Roadmap](#roadmap) to see what's ahead, or join the [🤝 Call for the Community](#call-for-the-community) to get involved.
 
 

@@ -23,6 +23,8 @@ dependencies = [
     "browsergym-core==0.13.0",
     "python-dotenv",
     "loguru",
+    "packaging>=23.2",
+    "pydantic>=2.9.0",
     "mcp[cli]>=1.23.0",
     "psutil>=7.0.0",
     "typer>=0.15.3",

@@ -1,0 +1,10 @@
+[mcp]
+default_transport = "stdio"
+allow_commands = ["python", "uv"]
+
+[mcp.tools.echo]
+command = "python"
+args = ["-m", "tests.mcp.echo_server"]
+transport = "stdio"
+version = "0.1.0"
+capabilities = ["echo", "health"]
