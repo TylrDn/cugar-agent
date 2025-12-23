@@ -32,6 +32,7 @@ from pydantic import BaseModel
 from enum import Enum
 
 from cuga.backend.cuga_graph.state.agent_state import AgentState
+from cuga.backend.altk_components import ALTKLifecycleManager
 
 
 class OutputFormat(str, Enum):
@@ -272,6 +273,7 @@ class AgentLoop:
         tracker: ActivityTracker,
         env_pointer: Optional[BrowserEnvGymAsync | ExtensionEnv] = None,
         logger_name: str = 'agent_loop',
+        lifecycle_manager: Optional[ALTKLifecycleManager] = None,
     ):
         self.env_pointer = env_pointer
         self.thread_id = thread_id
@@ -279,6 +281,7 @@ class AgentLoop:
         self.graph = graph
         self.tracker = tracker
         self.logger = logging.getLogger(logger_name)
+        self.lifecycle_manager = lifecycle_manager
 
     async def stream_event(self, event: StreamEvent) -> Generator[str, None, None]:
         yield event.format()
@@ -312,6 +315,9 @@ class AgentLoop:
         callbacks = [TokenUsageTracker(self.tracker)]
         if settings.advanced_features.langfuse_tracing and self.langfuse_handler is not None:
             callbacks.insert(0, self.langfuse_handler)
+
+        if state is not None and self.lifecycle_manager is not None:
+            state = self.lifecycle_manager.enhance_state_prompt(state)
 
         return self.graph.astream(
             state if state else Command(resume=resume.model_dump()) if not both_none else None,
@@ -360,7 +366,10 @@ class AgentLoop:
             )
 
         if "FinalAnswerAgent" in list(event.keys()) or "CodeAgent" in list(event.keys()):
-            return AgentLoopAnswer(end=True, has_tools=False, answer=state.final_answer, tools=msg.tool_calls)
+            final_answer = state.final_answer
+            if self.lifecycle_manager is not None:
+                final_answer = self.lifecycle_manager.enforce_policy(final_answer)
+            return AgentLoopAnswer(end=True, has_tools=False, answer=final_answer, tools=msg.tool_calls)
         else:
             return AgentLoopAnswer(end=False, has_tools=True, answer=msg.content, tools=msg.tool_calls)
 
