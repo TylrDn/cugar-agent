@@ -49,6 +49,8 @@ class MCPRegistry(Registry):
             entries = eps.select(group=group)
         elif isinstance(eps, dict):
             entries = eps.get(group, [])
+        elif isinstance(eps, Iterable):
+            entries = [ep for ep in eps if getattr(ep, "group", None) == group]
         if entries is None:
             return
         self._load_entrypoints(entries)
