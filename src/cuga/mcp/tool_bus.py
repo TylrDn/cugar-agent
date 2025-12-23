@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# REVIEW-FIX: Propagate lifecycle errors consistently through ToolBus.
+
 from cuga.mcp.adapters.mcp_tool import MCPToolHandle
 from cuga.mcp.interfaces import ToolRequest, ToolResponse
 from cuga.mcp.lifecycle import LifecycleManager

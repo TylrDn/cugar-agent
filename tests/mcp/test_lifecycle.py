@@ -1,13 +1,15 @@
 import asyncio
+import asyncio
 import pathlib
 
 import pytest
 
 from cuga.mcp.config import MCPConfig
-from cuga.mcp.errors import CallTimeout
+from cuga.mcp.errors import CallTimeout, StartupError
 from cuga.mcp.interfaces import ToolRequest
 from cuga.mcp.lifecycle import LifecycleManager
 from cuga.mcp.registry import MCPRegistry
+from cuga.mcp.telemetry.metrics import metrics
 
 
 def test_lifecycle_start_call_stop():
@@ -40,6 +42,7 @@ def test_circuit_breaker_opens_after_failures(monkeypatch):
             resp = await manager.call("sample", ToolRequest(method="echo"))
             assert not resp.ok
             assert "boom" in (resp.error or "")
+        assert metrics.counter("mcp.calls").count >= 3
         resp = await manager.call("sample", ToolRequest(method="echo"))
         assert not resp.ok
         assert resp.error == "circuit open"
@@ -58,6 +61,8 @@ def test_allow_commands_enforced():
         resp = await manager.call("sample", ToolRequest(method="echo"))
         assert not resp.ok
         assert "not allowed" in (resp.error or "")
+        with pytest.raises(StartupError):
+            await manager.ensure_runner(cfg.tools["sample"])
         await manager.stop_all()
 
     asyncio.run(_run())

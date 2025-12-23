@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# REVIEW-FIX: Circuit breaker accounting, allowlist pre-flight, and consistent error handling.
+
 import asyncio
 import time
 from collections import defaultdict, deque
@@ -72,6 +74,7 @@ class LifecycleManager:
 
     async def call(self, alias: str, request: ToolRequest) -> ToolResponse:
         spec = self.registry.get(alias)
+        metrics.counter("mcp.calls").inc()
         circuit = self.circuits[alias]
         if not circuit.allow():
             return ToolResponse(ok=False, error="circuit open", metrics={"transport": spec.transport})
@@ -85,7 +88,6 @@ class LifecycleManager:
             circuit.record_failure()
             metrics.counter("mcp.errors", {"kind": "startup"}).inc()
             return ToolResponse(ok=False, error=str(exc), metrics={"transport": spec.transport})
-        metrics.counter("mcp.calls").inc()
         stop_timer = metrics.time_block("mcp.latency_ms")
         try:
             payload = {"method": request.method, "params": request.params}
@@ -104,10 +106,11 @@ class LifecycleManager:
             circuit.record_failure()
             metrics.counter("mcp.errors", {"kind": "unavailable"}).inc()
             return ToolResponse(ok=False, error=str(exc), metrics={"transport": spec.transport})
-        except Exception as exc:  # REVIEW-FIX: keep callers stable by returning error
+        except Exception:  # REVIEW-FIX: keep callers stable by returning error
             circuit.record_failure()
             metrics.counter("mcp.errors", {"kind": "unexpected"}).inc()
-            return ToolResponse(ok=False, error=str(exc), metrics={"transport": spec.transport})
+            LOGGER.exception("Unexpected MCP failure", extra={"alias": alias})
+            return ToolResponse(ok=False, error="unexpected error", metrics={"transport": spec.transport})
         finally:
             stop_timer()
 

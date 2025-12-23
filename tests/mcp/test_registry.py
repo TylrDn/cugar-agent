@@ -42,6 +42,9 @@ def test_registry_reload_and_discovery(monkeypatch):
     cfg_b = MCPConfig(tools={"beta": ToolSpec(alias="beta", name="beta")})
     registry.reload(cfg_b)
     assert registry.get("beta").alias == "beta"
+    with pytest.raises(KeyError):
+        registry.get("alpha")
+
     class DummyEntry:
         name = "gamma"
 
@@ -50,9 +53,18 @@ def test_registry_reload_and_discovery(monkeypatch):
 
     class DummyEntries(list):
         def select(self, group=None):
-            return self
+            if group == "cuga_mcp_servers":
+                return self
+            return []
 
+    # Modern API
     monkeypatch.setattr("importlib.metadata.entry_points", lambda: DummyEntries([DummyEntry()]))
+    registry.discover_entrypoints()
+    assert registry.get("gamma").alias == "gamma"
+
+    # Legacy mapping API
+    registry.reload(cfg_b)
+    monkeypatch.setattr("importlib.metadata.entry_points", lambda: {"cuga_mcp_servers": [DummyEntry()]})
     registry.discover_entrypoints()
     assert registry.get("gamma").alias == "gamma"
 
