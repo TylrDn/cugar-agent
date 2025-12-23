@@ -2,8 +2,9 @@ from __future__ import annotations
 
 # REVIEW-FIX: Registry reload atomicity and entry-point shims for 3.9-3.12.
 
-from importlib import metadata
-from typing import Dict, Iterable, Optional
+from collections.abc import Iterable
+from importlib_metadata import metadata
+from typing import Dict, Optional
 
 from packaging.version import Version, parse
 

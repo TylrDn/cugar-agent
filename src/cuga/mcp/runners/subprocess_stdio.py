@@ -8,7 +8,8 @@ import os
 import random
 import signal
 from asyncio.subprocess import Process
-from typing import Iterable, List, Optional
+from collections.abc import Iterable
+from typing import List, Optional
 
 from cuga.mcp.errors import CallTimeout, StartupError
 from cuga.mcp.interfaces import Runner

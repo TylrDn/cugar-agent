@@ -2,7 +2,6 @@ from __future__ import annotations
 
 # REVIEW-FIX: Safe sync wrapper parity; resilient thread/loop lifecycle.
 
-import atexit
 import asyncio
 import threading
 from concurrent.futures import Future
@@ -15,12 +14,10 @@ from cuga.mcp.interfaces import ToolRequest
 
 
 class AsyncWorker:
-    """Singleton async worker running a shared event loop."""
-
-    _instance_lock = threading.Lock()
-    _instance: AsyncWorker | None = None
+    """Async worker running a dedicated event loop."""
 
     def __init__(self) -> None:
+        self._instance_lock = threading.Lock()
         self._loop: asyncio.AbstractEventLoop | None = None
         self._loop_ready = threading.Event()
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
@@ -34,27 +31,20 @@ class AsyncWorker:
             raise RuntimeError("AsyncWorker loop is not running")
         return loop
 
-    @classmethod
-    def instance(cls) -> AsyncWorker:
-        if cls._instance and cls._instance._is_running:
-            return cls._instance
-        with cls._instance_lock:
-            if cls._instance and cls._instance._is_running:
-                return cls._instance
-            cls._instance = cls()
-        return cls._instance
-
     def submit(self, coro: Coroutine[Any, Any, Any]) -> Future[Any]:
         """Submit coroutine to the shared loop."""
 
-        return asyncio.run_coroutine_threadsafe(coro, self.loop)
+        with self._instance_lock:
+            return asyncio.run_coroutine_threadsafe(coro, self.loop)
 
     def stop(self) -> None:
         loop = self._loop
         if not loop or loop.is_closed():
             return
         loop.call_soon_threadsafe(loop.stop)
-        self._thread.join()
+        self._thread.join(timeout=1)
+        self._loop = None
+        self._loop_ready.clear()
 
     @property
     def _is_running(self) -> bool:
@@ -75,20 +65,16 @@ class AsyncWorker:
                 loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
             loop.run_until_complete(loop.shutdown_asyncgens())
             loop.close()
-
-
-atexit.register(lambda: AsyncWorker._instance and AsyncWorker._instance.stop())
-
-
 class LangChainMCPTool(BaseTool):
     name: str
     description: str = "MCP tool"
 
-    def __init__(self, handle: MCPToolHandle, description: str = "MCP tool"):
+    def __init__(self, handle: MCPToolHandle, description: str = "MCP tool", worker: AsyncWorker | None = None):
         super().__init__()
         self.handle = handle
         self.name = handle.alias
         self.description = description
+        self.worker = worker or AsyncWorker()
 
     def _run(self, tool_input: str, run_manager=None):  # type: ignore[override]
         coro = self._arun(tool_input, run_manager)
@@ -97,8 +83,7 @@ class LangChainMCPTool(BaseTool):
         except RuntimeError:
             return asyncio.run(coro)
 
-        worker = AsyncWorker.instance()
-        result = worker.submit(coro)
+        result = self.worker.submit(coro)
         try:
             return result.result()
         except KeyboardInterrupt:

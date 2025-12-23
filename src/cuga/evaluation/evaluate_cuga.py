@@ -5,7 +5,8 @@ from cuga.evaluation.langfuse.get_langfuse_data import LangfuseTraceHandler
 from loguru import logger
 import traceback
 from pydantic import BaseModel
-from typing import List, Dict, Iterable, Any, Optional
+from collections.abc import Iterable
+from typing import Any, Dict, List, Optional
 import json
 import csv
 from calculate_test_score import evaluate_test_and_details, TestScore, TestScoreDetails, ToolCall

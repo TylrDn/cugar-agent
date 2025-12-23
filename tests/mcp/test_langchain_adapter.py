@@ -20,7 +20,7 @@ def _install_langchain_stub() -> None:
 
 _install_langchain_stub()
 
-from cuga.mcp.adapters.langchain_adapter import LangChainMCPTool
+from cuga.mcp.adapters.langchain_adapter import AsyncWorker, LangChainMCPTool
 from cuga.mcp.interfaces import ToolResponse
 
 
@@ -34,23 +34,32 @@ class FakeHandle:
 
 
 def test_run_without_loop():
-    tool = LangChainMCPTool(FakeHandle("ok"))
+    worker = AsyncWorker()
+    tool = LangChainMCPTool(FakeHandle("ok"), worker=worker)
     before = threading.active_count()
-    assert tool._run("hi") == "hi"
-    assert threading.active_count() <= before + 1
+    try:
+        assert tool._run("hi") == "hi"
+        assert threading.active_count() <= before + 1
+    finally:
+        worker.stop()
 
 
 def test_run_with_running_loop_same_thread():
-    tool = LangChainMCPTool(FakeHandle("ok"))
+    worker = AsyncWorker()
+    tool = LangChainMCPTool(FakeHandle("ok"), worker=worker)
 
     async def main():
         return tool._run("loop")
 
-    assert asyncio.run(main()) == "loop"
+    try:
+        assert asyncio.run(main()) == "loop"
+    finally:
+        worker.stop()
 
 
 def test_run_with_loop_other_thread():
-    tool = LangChainMCPTool(FakeHandle("ok"))
+    worker = AsyncWorker()
+    tool = LangChainMCPTool(FakeHandle("ok"), worker=worker)
     result_holder = {}
 
     def worker():
@@ -62,5 +71,8 @@ def test_run_with_loop_other_thread():
     t = threading.Thread(target=worker)
     t.start()
     t.join()
-    assert result_holder["value"] == "thread"
-    assert threading.active_count() <= before + 2
+    try:
+        assert result_holder["value"] == "thread"
+        assert threading.active_count() <= before + 2
+    finally:
+        worker.stop()
