@@ -613,6 +613,31 @@ For information on how to evaluate, see the [CUGA Evaluation Documentation](src/
 - 📖 [Example applications](./docs/examples)
 - 📧 Contact: [CUGA Team](https://forms.office.com/pages/responsepage.aspx?id=V3D2_MlQ1EqY8__KZK3Z6UtMUa14uFNMi1EyUFiZFGRUQklOQThLRjlYMFM2R1dYTk5GVTFMRzNZVi4u&route=shorturl)
 
+## Subagent Tooling via Profiles
+
+Use the provided MCP profile plumbing to compose domain-specific tool packs without touching core source code:
+
+```bash
+# Setup
+uv venv --python=3.12 && source .venv/bin/activate
+uv sync
+make profile-demo_power
+export MCP_SERVERS_FILE=./build/mcp_servers.demo_power.yaml
+
+# Run CUGA with the merged registry
+cuga start demo
+```
+
+Notes:
+- Default registry path is `src/cuga/backend/tools_env/registry/config/mcp_servers.yaml`.
+- Set `MCP_SERVERS_FILE` to point to a merged profile output to override the default.
+- Subagents stay isolated through dedicated registry fragments; profiles opt-in to specific fragments only.
+
+### Using MCP profiles with Langflow
+- DEV flows use HTTP access to `${LF_SERVER:-http://localhost:7860}/api/v1/mcp/streamable` with optional `${LF_API_KEY}`.
+- PROD flows use `mcp-proxy` over STDIO with per-project endpoints (trading, music, WordPress) defined in `mcp-foundation/registry/fragments/langflow.*.prod.yaml`.
+- Edit or add fragments under `mcp-foundation/registry/fragments/` to expose new flows or OpenAPI services, then regenerate with `make profile-demo_power`.
+
 
 ## Call for the Community
 

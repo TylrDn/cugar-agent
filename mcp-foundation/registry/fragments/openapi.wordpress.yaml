@@ -1,0 +1,5 @@
+---
+services:
+  - wordpress_api:
+      url: "${WORDPRESS_OPENAPI_URL:-http://localhost:9002/openapi.json}"
+      description: Placeholder WordPress OpenAPI (read-only by default)
