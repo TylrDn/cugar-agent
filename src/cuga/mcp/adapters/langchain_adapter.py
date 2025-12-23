@@ -2,15 +2,82 @@ from __future__ import annotations
 
 # REVIEW-FIX: Safe sync wrapper parity; resilient thread/loop lifecycle.
 
+import atexit
 import asyncio
 import threading
 from concurrent.futures import Future
-from typing import Any
+from typing import Any, Coroutine
 
 from langchain.tools import BaseTool
 
 from cuga.mcp.adapters.mcp_tool import MCPToolHandle
 from cuga.mcp.interfaces import ToolRequest
+
+
+class AsyncWorker:
+    """Singleton async worker running a shared event loop."""
+
+    _instance_lock = threading.Lock()
+    _instance: AsyncWorker | None = None
+
+    def __init__(self) -> None:
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._loop_ready = threading.Event()
+        self._thread = threading.Thread(target=self._run_loop, daemon=True)
+        self._thread.start()
+        self._loop_ready.wait()
+
+    @property
+    def loop(self) -> asyncio.AbstractEventLoop:
+        loop = self._loop
+        if loop is None or loop.is_closed():
+            raise RuntimeError("AsyncWorker loop is not running")
+        return loop
+
+    @classmethod
+    def instance(cls) -> AsyncWorker:
+        if cls._instance and cls._instance._is_running:
+            return cls._instance
+        with cls._instance_lock:
+            if cls._instance and cls._instance._is_running:
+                return cls._instance
+            cls._instance = cls()
+        return cls._instance
+
+    def submit(self, coro: Coroutine[Any, Any, Any]) -> Future[Any]:
+        """Submit coroutine to the shared loop."""
+
+        return asyncio.run_coroutine_threadsafe(coro, self.loop)
+
+    def stop(self) -> None:
+        loop = self._loop
+        if not loop or loop.is_closed():
+            return
+        loop.call_soon_threadsafe(loop.stop)
+        self._thread.join()
+
+    @property
+    def _is_running(self) -> bool:
+        return self._loop_ready.is_set() and self._loop is not None and not self._loop.is_closed()
+
+    def _run_loop(self) -> None:
+        loop = asyncio.new_event_loop()
+        self._loop = loop
+        asyncio.set_event_loop(loop)
+        self._loop_ready.set()
+        try:
+            loop.run_forever()
+        finally:
+            tasks = asyncio.all_tasks(loop)
+            if tasks:
+                for task in tasks:
+                    task.cancel()
+                loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
+
+
+atexit.register(lambda: AsyncWorker._instance and AsyncWorker._instance.stop())
 
 
 class LangChainMCPTool(BaseTool):
@@ -30,41 +97,13 @@ class LangChainMCPTool(BaseTool):
         except RuntimeError:
             return asyncio.run(coro)
 
-        result: Future[Any] = Future()
-        loop_ready = threading.Event()
-        loop_holder: dict[str, asyncio.AbstractEventLoop] = {}
-        task_holder: dict[str, asyncio.Task[Any]] = {}
-
-        def runner() -> None:
-            loop = asyncio.new_event_loop()
-            loop_holder["loop"] = loop
-            asyncio.set_event_loop(loop)
-            loop_ready.set()
-            try:
-                task = loop.create_task(coro)
-                task_holder["task"] = task
-                res = loop.run_until_complete(task)
-            except BaseException as exc:  # noqa: BLE001 - propagate original
-                result.set_exception(exc)
-            else:
-                result.set_result(res)
-            finally:
-                loop.run_until_complete(loop.shutdown_asyncgens())
-                loop.close()
-
-        thread = threading.Thread(target=runner, daemon=True)
-        thread.start()
-        loop_ready.wait()
+        worker = AsyncWorker.instance()
+        result = worker.submit(coro)
         try:
             return result.result()
         except KeyboardInterrupt:
-            loop = loop_holder.get("loop")
-            task = task_holder.get("task")
-            if loop and task and not loop.is_closed():
-                loop.call_soon_threadsafe(task.cancel)
+            result.cancel()
             raise
-        finally:
-            thread.join()
 
     async def _arun(self, tool_input: str, run_manager=None):  # type: ignore[override]
         req = ToolRequest(method="invoke", params={"input": tool_input})
