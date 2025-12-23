@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, Protocol
 
-from pydantic import BaseModel, Field
+from cuga.compat.pydantic_stub import BaseModel, Field
 
 
 class ToolRequest(BaseModel):

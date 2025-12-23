@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, Optional, Tuple
 
 
 @dataclass
@@ -25,13 +25,14 @@ class Histogram:
 
 class Metrics:
     def __init__(self) -> None:
-        self.counters: Dict[str, Counter] = {}
+        self.counters: Dict[Tuple[str, Tuple[Tuple[str, str], ...]], Counter] = {}
         self.histograms: Dict[str, Histogram] = {}
 
-    def counter(self, name: str) -> Counter:
-        if name not in self.counters:
-            self.counters[name] = Counter(name)
-        return self.counters[name]
+    def counter(self, name: str, labels: Optional[Dict[str, str]] = None) -> Counter:
+        key = (name, tuple(sorted((labels or {}).items())))
+        if key not in self.counters:
+            self.counters[key] = Counter(name)
+        return self.counters[key]
 
     def histogram(self, name: str) -> Histogram:
         if name not in self.histograms:

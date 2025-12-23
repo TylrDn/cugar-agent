@@ -1,0 +1,6 @@
+# Patch summary (review alignment)
+# - src/cuga/mcp/runners/subprocess_stdio.py: tightened exception taxonomy, restart/backoff, and command allowlist gate.
+# - src/cuga/mcp/lifecycle.py & src/cuga/mcp/config.py: allowlist enforced at runner creation, circuit breaker returns ToolResponse with labeled metrics.
+# - src/cuga/mcp/adapters/langchain_adapter.py & autogen_adapter.py: sync/async parity and accurate async typing.
+# - src/cuga/mcp/registry.py & tool_bus.py: registry reload/version/entrypoint handling and tool bus error propagation/listing.
+# - tests/mcp/*: coverage for circuit breaker, runner taxonomy, allowlist, tool bus, and registry discovery/version cases.

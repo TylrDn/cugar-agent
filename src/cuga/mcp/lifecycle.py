@@ -5,7 +5,7 @@ import time
 from collections import defaultdict, deque
 from typing import Dict, Optional, Tuple
 
-from cuga.mcp.errors import CallTimeout, CircuitOpen, ToolUnavailable
+from cuga.mcp.errors import CallTimeout, StartupError, ToolUnavailable
 from cuga.mcp.interfaces import ToolRequest, ToolResponse, ToolSpec
 from cuga.mcp.registry import MCPRegistry
 from cuga.mcp.runners.subprocess_stdio import SubprocessStdioRunner
@@ -49,6 +49,8 @@ class LifecycleManager:
 
     async def ensure_runner(self, spec: ToolSpec) -> SubprocessStdioRunner:
         key = self._runner_key(spec)
+        if spec.transport != "stdio":
+            raise ToolUnavailable(f"Unsupported transport: {spec.transport}")
         if key in self.runners and self.runners[key].is_healthy():
             return self.runners[key]
         runner = SubprocessStdioRunner(
@@ -56,6 +58,7 @@ class LifecycleManager:
             args=spec.args,
             env=spec.env,
             working_dir=spec.working_dir,
+            allowed_commands=self.registry.config.allow_commands,
         )
         await runner.start()
         self.runners[key] = runner
@@ -71,21 +74,42 @@ class LifecycleManager:
         spec = self.registry.get(alias)
         circuit = self.circuits[alias]
         if not circuit.allow():
-            raise CircuitOpen(f"Circuit open for {alias}")
-        runner = await self.ensure_runner(spec)
+            return ToolResponse(ok=False, error="circuit open", metrics={"transport": spec.transport})
+        try:
+            runner = await self.ensure_runner(spec)
+        except ToolUnavailable as exc:
+            circuit.record_failure()
+            metrics.counter("mcp.errors", {"kind": "unavailable"}).inc()
+            return ToolResponse(ok=False, error=str(exc), metrics={"transport": spec.transport})
+        except StartupError as exc:
+            circuit.record_failure()
+            metrics.counter("mcp.errors", {"kind": "startup"}).inc()
+            return ToolResponse(ok=False, error=str(exc), metrics={"transport": spec.transport})
         metrics.counter("mcp.calls").inc()
         stop_timer = metrics.time_block("mcp.latency_ms")
         try:
             payload = {"method": request.method, "params": request.params}
             raw = await runner.call_with_retry(payload, timeout=request.timeout_s or spec.timeout_s)
-            stop_timer()
             circuit.record_success()
             return ToolResponse(ok=True, result=raw.get("result"), metrics={"transport": spec.transport})
-        except (CallTimeout, ToolUnavailable) as exc:
+        except CallTimeout as exc:
             circuit.record_failure()
-            stop_timer()
-            metrics.counter("mcp.errors").inc()
+            metrics.counter("mcp.errors", {"kind": "timeout"}).inc()
             return ToolResponse(ok=False, error=str(exc), metrics={"transport": spec.transport})
+        except StartupError as exc:
+            circuit.record_failure()
+            metrics.counter("mcp.errors", {"kind": "startup"}).inc()
+            return ToolResponse(ok=False, error=str(exc), metrics={"transport": spec.transport})
+        except ToolUnavailable as exc:
+            circuit.record_failure()
+            metrics.counter("mcp.errors", {"kind": "unavailable"}).inc()
+            return ToolResponse(ok=False, error=str(exc), metrics={"transport": spec.transport})
+        except Exception as exc:  # REVIEW-FIX: keep callers stable by returning error
+            circuit.record_failure()
+            metrics.counter("mcp.errors", {"kind": "unexpected"}).inc()
+            return ToolResponse(ok=False, error=str(exc), metrics={"transport": spec.transport})
+        finally:
+            stop_timer()
 
     async def stop_all(self) -> None:
         await asyncio.gather(*(runner.stop() for runner in list(self.runners.values())))

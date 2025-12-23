@@ -3,6 +3,7 @@ import pathlib
 import pytest
 
 from cuga.mcp.config import MCPConfig, load_config
+from cuga.mcp.interfaces import ToolSpec
 from cuga.mcp.registry import MCPRegistry
 
 
@@ -25,4 +26,33 @@ def test_registry_get_and_list():
     assert any(t.alias == "sample" for t in tools)
     with pytest.raises(KeyError):
         registry.get("missing")
+
+
+def test_registry_version_mismatch_raises():
+    cfg_path = pathlib.Path(__file__).with_name("sample_config.toml")
+    cfg = MCPConfig.from_toml(str(cfg_path))
+    registry = MCPRegistry(cfg)
+    with pytest.raises(ValueError):
+        registry.get("sample", version="2.0.0")
+
+
+def test_registry_reload_and_discovery(monkeypatch):
+    cfg_a = MCPConfig(tools={"alpha": ToolSpec(alias="alpha", name="alpha")})
+    registry = MCPRegistry(cfg_a)
+    cfg_b = MCPConfig(tools={"beta": ToolSpec(alias="beta", name="beta")})
+    registry.reload(cfg_b)
+    assert registry.get("beta").alias == "beta"
+    class DummyEntry:
+        name = "gamma"
+
+        def load(self):
+            return lambda: ToolSpec(alias="gamma", name="gamma")
+
+    class DummyEntries(list):
+        def select(self, group=None):
+            return self
+
+    monkeypatch.setattr("importlib.metadata.entry_points", lambda: DummyEntries([DummyEntry()]))
+    registry.discover_entrypoints()
+    assert registry.get("gamma").alias == "gamma"
 
