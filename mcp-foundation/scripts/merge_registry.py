@@ -38,6 +38,9 @@ def load_profile(profile_name: str, profiles_dir: Path) -> Tuple[dict, Path]:
         langflow_prod_projects = {}
     if not isinstance(langflow_prod_projects, dict):
         raise ValueError("'langflow_prod_projects' must be a mapping of project names to env vars")
+    for proj, env_var in langflow_prod_projects.items():
+        if not isinstance(proj, str) or not isinstance(env_var, str):
+            raise ValueError("'langflow_prod_projects' keys and values must be strings")
 
     return {
         "fragments": fragments,

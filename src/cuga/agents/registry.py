@@ -24,7 +24,9 @@ class ToolRegistry:
     def sandbox(self, profile: str) -> "ToolRegistry":
         """Return an isolated view for a single profile."""
 
-        profile_tools = self._tools.get(profile, {})
+        if profile not in self._tools:
+            raise KeyError(f"Profile '{profile}' not found in registry")
+        profile_tools = self._tools[profile]
         return ToolRegistry({profile: copy.deepcopy(profile_tools)})
 
     def resolve(self, profile: str, name: str) -> Dict[str, Any]:

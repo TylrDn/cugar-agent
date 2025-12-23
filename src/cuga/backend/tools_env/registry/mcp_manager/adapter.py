@@ -553,7 +553,7 @@ def create_handler(api, model, base_url: str, name: str, schemas: Dict[str, Serv
                 # Try to get response body for more details
                 try:
                     if e.response.headers.get('content-type', '').startswith('application/json'):
-                        error_response["message"] += f" {json.dumps(response.json())}"
+                        error_response["message"] += f" {json.dumps(e.response.json())}"
                     else:
                         error_response["message"] += f" {e.response.text}"
                 except Exception:
