@@ -7,7 +7,7 @@ mcpServers:
       - mcp-proxy
       - --headers
       - x-api-key
-      - "${LF_API_KEY}"
+      - "${LF_API_KEY:?LF_API_KEY is required for prod services}"
       - "${LF_SERVER:-http://localhost:7860}/api/v1/mcp/project/${LF_WORDPRESS_PROJECT_ID}/streamable"
     description: Langflow WordPress Project (PROD via proxy, STDIO)
 

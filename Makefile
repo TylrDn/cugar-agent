@@ -1,8 +1,13 @@
-.PHONY: profile-demo_power env-dev
+.PHONY: profile-demo_power env-dev test
 
 profile-demo_power:
-uv run python ./mcp-foundation/scripts/merge_registry.py --profile demo_power
+	uv run python ./mcp-foundation/scripts/merge_registry.py --profile demo_power
 
 env-dev:
-@echo "Exporting MCP_SERVERS_FILE to profile output"
-@export MCP_SERVERS_FILE=./build/mcp_servers.demo_power.yaml && echo "MCP_SERVERS_FILE=$$MCP_SERVERS_FILE"
+	@MCP_SERVERS_FILE=./build/mcp_servers.demo_power.yaml; \
+		echo "export MCP_SERVERS_FILE=$$MCP_SERVERS_FILE"; \
+		printf "MCP_SERVERS_FILE=$$MCP_SERVERS_FILE\n" > .env.mcp; \
+		echo "Wrote .env.mcp (source with: set -a; source .env.mcp; set +a)"
+
+test:
+	uv run pytest -q

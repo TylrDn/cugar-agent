@@ -6,13 +6,13 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import tomllib
 import yaml
 
 
-def load_profile(profile_name: str, profiles_dir: Path) -> dict:
+def load_profile(profile_name: str, profiles_dir: Path) -> Tuple[dict, Path]:
     profile_path = profiles_dir / f"{profile_name}.toml"
     if not profile_path.exists():
         raise FileNotFoundError(f"Profile file not found: {profile_path}")
@@ -33,7 +33,17 @@ def load_profile(profile_name: str, profiles_dir: Path) -> dict:
     if not isinstance(output, str) or not output:
         raise ValueError(f"Profile '{profile_name}' must define an 'output' path")
 
-    return {"fragments": fragments, "output": output}
+    langflow_prod_projects = profile.get("langflow_prod_projects", {})
+    if langflow_prod_projects is None:
+        langflow_prod_projects = {}
+    if not isinstance(langflow_prod_projects, dict):
+        raise ValueError("'langflow_prod_projects' must be a mapping of project names to env vars")
+
+    return {
+        "fragments": fragments,
+        "output": output,
+        "langflow_prod_projects": langflow_prod_projects,
+    }, profile_path
 
 
 def _validate_mcp_servers(mcp_servers: Any, source: Path) -> Dict[str, Any]:
@@ -57,24 +67,75 @@ def _validate_services(services: Any, source: Path) -> List[dict]:
     return validated
 
 
-def merge_fragments(fragment_paths: List[Path]) -> dict:
+def create_langflow_prod_config(project_id_env_var: str) -> Dict[str, Any]:
+    return {
+        "transport": "stdio",
+        "command": "uvx",
+        "args": [
+            "mcp-proxy",
+            "--headers",
+            "x-api-key",
+            "${LF_API_KEY:?LF_API_KEY is required for prod services}",
+            f"${{LF_SERVER:-http://localhost:7860}}/api/v1/mcp/project/{project_id_env_var}/streamable",
+        ],
+        "description": f"Langflow Project ({project_id_env_var}, PROD via proxy, STDIO)",
+    }
+
+
+def _load_yaml(path: Path) -> dict:
+    with path.open("r", encoding="utf-8") as f:
+        try:
+            return yaml.safe_load(f) or {}
+        except yaml.YAMLError as err:
+            raise ValueError(f"Invalid YAML in {path}: {err}") from err
+
+
+def merge_fragments(
+    fragment_paths: List[Path],
+    *,
+    langflow_prod_projects: Dict[str, str] | None = None,
+) -> dict:
     merged_mcp_servers: Dict[str, Any] = {}
     merged_services: Dict[str, Any] = {}
+    mcp_server_sources: Dict[str, Path] = {}
+    service_sources: Dict[str, Path] = {}
 
     for path in fragment_paths:
         if not path.exists():
             raise FileNotFoundError(f"Fragment not found: {path}")
-        with path.open("r", encoding="utf-8") as f:
-            content = yaml.safe_load(f) or {}
+        content = _load_yaml(path)
 
         mcp_servers = _validate_mcp_servers(content.get("mcpServers"), path)
         services = _validate_services(content.get("services"), path)
 
-        merged_mcp_servers.update(mcp_servers)
+        for name, details in mcp_servers.items():
+            if name in merged_mcp_servers:
+                raise ValueError(
+                    f"Duplicate mcpServers entry '{name}' found in {path} and {mcp_server_sources[name]}"
+                )
+            merged_mcp_servers[name] = details
+            mcp_server_sources[name] = path
 
         for service in services:
             name, details = next(iter(service.items()))
+            if name in merged_services:
+                raise ValueError(
+                    f"Duplicate service entry '{name}' found in {path} and {service_sources[name]}"
+                )
             merged_services[name] = details
+            service_sources[name] = path
+
+    langflow_prod_projects = langflow_prod_projects or {}
+    for project_name, project_id_env_var in langflow_prod_projects.items():
+        server_key = f"langflow_{project_name}"
+        if server_key in merged_mcp_servers:
+            print(
+                f"[deprecation] Legacy Langflow fragment already defines '{server_key}' (source: {mcp_server_sources[server_key]}). "
+                "Prefer removing the fragment and using 'langflow_prod_projects' in the profile.",
+                file=sys.stderr,
+            )
+            continue
+        merged_mcp_servers[server_key] = create_langflow_prod_config(project_id_env_var)
 
     services_list = [{name: details} for name, details in merged_services.items()]
     return {"mcpServers": merged_mcp_servers, "services": services_list}
@@ -105,10 +166,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    profile = load_profile(args.profile, args.profiles_dir)
+    profile, profile_path = load_profile(args.profile, args.profiles_dir)
 
-    fragment_paths = [Path(path) for path in profile["fragments"]]
-    merged = merge_fragments(fragment_paths)
+    fragment_paths = [Path(path) if Path(path).is_absolute() else profile_path.parent / path for path in profile["fragments"]]
+    merged = merge_fragments(fragment_paths, langflow_prod_projects=profile.get("langflow_prod_projects"))
 
     if not isinstance(merged.get("mcpServers"), dict) or not isinstance(merged.get("services"), list):
         raise ValueError("Merged output must include 'mcpServers' (dict) and 'services' (list)")

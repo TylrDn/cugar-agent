@@ -2,18 +2,12 @@
 fragments = [
   "./mcp-foundation/registry/fragments/base.yaml",
   "./mcp-foundation/registry/fragments/langflow.global.dev.yaml",
-  "./mcp-foundation/registry/fragments/langflow.trading.prod.yaml",
-  "./mcp-foundation/registry/fragments/langflow.music.prod.yaml",
-  "./mcp-foundation/registry/fragments/langflow.wordpress.prod.yaml",
   "./mcp-foundation/registry/fragments/openapi.trading.yaml",
   "./mcp-foundation/registry/fragments/openapi.wordpress.yaml",
 ]
 output = "./build/mcp_servers.demo_power.yaml"
 
-[env]
-LF_SERVER = "http://localhost:7860"
-LF_API_KEY = "env://LF_API_KEY"
-LF_TRADING_PROJECT_ID = "proj-trading-123"
-LF_MUSIC_PROJECT_ID = "proj-music-456"
-LF_WORDPRESS_PROJECT_ID = "proj-wordpress-789"
-DIGITAL_SALES_OPENAPI_URL = "https://digitalsales.19pc1vtv090u.us-east.codeengine.appdomain.cloud/openapi.json"
+[profiles.demo_power.langflow_prod_projects]
+trading = "${LF_TRADING_PROJECT_ID}"
+music = "${LF_MUSIC_PROJECT_ID}"
+wordpress = "${LF_WORDPRESS_PROJECT_ID}"

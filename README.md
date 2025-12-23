@@ -55,6 +55,12 @@ CUGA achieves state-of-the-art performance on leading benchmarks:
 ### 🔌 MCP integration roadmap
 - A registry- and lifecycle-driven MCP tool layer with stdio runner, pooling, retries, and structured logs has been added as an opt-in slice. See [`docs/mcp_integration.md`](docs/mcp_integration.md) for design notes and configuration examples.
 
+### 🧭 Multi-agent orchestration & registry assembly
+- Start with [Agents.md](Agents.md) for controller → planner → executor flow, guardrails, and links to per-component docs in `docs/agents/`.
+- Registry fragments now support templated Langflow prod entries via `[profiles.<name>.langflow_prod_projects]` (see `docs/registry_merge.md`). Legacy prod fragments are supported temporarily but emit a deprecation warning when duplicated.
+- The merge script fails fast on duplicate `mcpServers` or service names and resolves fragment paths relative to the profile file.
+- Use `make env-dev` to generate `.env.mcp` and an eval-friendly `export MCP_SERVERS_FILE=...` line for your shell.
+
 Explore the [Roadmap](#roadmap) to see what's ahead, or join the [🤝 Call for the Community](#call-for-the-community) to get involved.
 
 
