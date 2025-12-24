@@ -1,0 +1,10 @@
+---
+mcpServers:
+  crypto_wallet:
+    version: "0.1.0"
+    transport: stdio
+    command: python
+    args: ["-m", "cuga.mcp_servers.crypto_wallet.server"]
+    env:
+      CUGA_PROFILE_SANDBOX: "${CUGA_PROFILE_SANDBOX}"
+    description: "Armor crypto MCP wrapper for mnemonic and signing flows"

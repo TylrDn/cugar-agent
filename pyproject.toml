@@ -59,6 +59,7 @@ exclude = [
 [tool.setuptools.package-data]
 cuga = [
     "configurations/**/*.toml",
+    "configurations/**/*.yaml",
     "configurations/**/*.md",
     "settings.toml",
     "backend/**/*.jinja2",

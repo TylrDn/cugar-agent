@@ -4,6 +4,11 @@ fragments = [
   "./mcp-foundation/registry/fragments/langflow.global.dev.yaml",
   "./mcp-foundation/registry/fragments/openapi.trading.yaml",
   "./mcp-foundation/registry/fragments/openapi.wordpress.yaml",
+  "../_shared/scrape_tweets.yaml",
+  "../_shared/extract_article.yaml",
+  "../_shared/crypto_wallet.yaml",
+  "../_shared/moon_agents.yaml",
+  "../_shared/vault_tools.yaml",
 ]
 output = "./build/mcp_servers.demo_power.yaml"
 

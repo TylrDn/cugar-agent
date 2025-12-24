@@ -1,0 +1,10 @@
+---
+mcpServers:
+  extract_article:
+    version: "0.1.0"
+    transport: stdio
+    command: python
+    args: ["-m", "cuga.mcp_servers.extract_article.server"]
+    env:
+      CUGA_PROFILE_SANDBOX: "${CUGA_PROFILE_SANDBOX}"
+    description: "Extract clean article text and metadata via newspaper4k"

@@ -1,0 +1,10 @@
+---
+mcpServers:
+  scrape_tweets:
+    version: "0.1.0"
+    transport: stdio
+    command: python
+    args: ["-m", "cuga.mcp_servers.scrape_tweets.server"]
+    env:
+      CUGA_PROFILE_SANDBOX: "${CUGA_PROFILE_SANDBOX}"
+    description: "Scrape tweets from X/Twitter via snscrape"
