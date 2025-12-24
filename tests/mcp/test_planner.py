@@ -40,6 +40,13 @@ def test_toolregistry_sandbox_isolated_mutation():
     assert sandboxed.resolve("profile", "tool")["config"]["value"] == 2
 
 
+def test_toolregistry_sandbox_missing_profile_raises():
+    registry = ToolRegistry()
+
+    with pytest.raises(KeyError):
+        registry.sandbox("missing")
+
+
 def test_toolregistry_merge_deep_independence_and_conflict_detection():
     registry_a = ToolRegistry()
     registry_b = ToolRegistry()
