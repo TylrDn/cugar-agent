@@ -99,7 +99,33 @@ Runtime assembly:
 3. **Nudge planners**: optionally clone `src/cuga/configurations/instructions/default/` to a new set and tune `plan_controller.md` / `api_planner.md` to favor the new domain tools.
 4. **Test + docs**: run the relevant planners/executors against the new tools and record the addition in your change notes.
 
-## 6) Deep-dive references
+## 6) Policy, HITL, and safety controls
+Policy and human-in-the-loop controls are configured in `src/cuga/settings.toml`:
+
+```toml
+[advanced_features]
+api_planner_hitl = true  # pauses API plans for human approval before execution
+```
+
+Typical flow: the planner proposes a multi-step plan, a reviewer approves or edits it, and executors only run the approved version. Tighten `plan_controller.md` / `api_planner.md` in your instruction set to enforce allowed services, PII handling, or change-management steps.
+
+## 7) Memory (optional)
+Long-term memory is opt-in. To enable:
+- Install memory extras (see `README` / `docs`).
+- Set `enable_memory = true` in your active settings TOML.
+- Start CUGA in a memory-aware mode (for example, `cuga start memory`).
+
+The controller and planners then reuse previous trajectories, recall successful tool calls, and maintain cross-task context for long-running workflows.
+
+## 8) Extending this repo (agent capability checklist)
+When adding a new agent role or capability:
+1. **Pick the role**: planner, executor, reflection/helper, or UI-side assistant.
+2. **Wire tools**: add an MCP server or OpenAPI spec, then register it in `registry.yaml` (and `src/cuga/backend/tools_env/registry/config/` if it needs connection details).
+3. **Create/update instructions**: edit or add markdown under your instruction set to define what the agent does, when to invoke it, and any safety constraints.
+4. **Tune modes/policies**: choose reasoning + task modes, and enable HITL or sandboxed code execution if needed.
+5. **Document**: update this file with any new roles or domains so contributors see the full multi-agent picture at a glance.
+
+## 9) Deep-dive references
 - **MCP integration**: `docs/MCP_INTEGRATION.md`.
 - **Registry merging**: `docs/REGISTRY_MERGE.md`.
 - **Agent guardrails**: root `AGENTS.md`.
