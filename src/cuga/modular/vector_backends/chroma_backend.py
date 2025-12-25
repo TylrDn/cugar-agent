@@ -20,7 +20,7 @@ class ChromaBackend(VectorBackend):
         if self._collection is None:
             return
         ids = [str(uuid.uuid4()) for _ in records]
-        embeddings = [rec.embedding.tolist() for rec in records]
+        embeddings = [rec.embedding for rec in records]
         metadatas = [rec.record.metadata for rec in records]
         documents = [rec.record.text for rec in records]
         self._collection.upsert(ids=ids, embeddings=embeddings, metadatas=metadatas, documents=documents)
@@ -28,7 +28,7 @@ class ChromaBackend(VectorBackend):
     def search(self, query_vector: list[float], top_k: int) -> list[SearchHit]:
         if self._collection is None:
             return []
-        results = self._collection.query(query_embeddings=[query_vector.tolist()], n_results=top_k)
+        results = self._collection.query(query_embeddings=[query_vector], n_results=top_k)
         hits: list[SearchHit] = []
         for doc, meta, distance in zip(
             results.get("documents", [[]])[0],

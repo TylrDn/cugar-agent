@@ -56,17 +56,19 @@ class PlannerAgent:
         return AgentPlan(steps=steps, trace=trace)
 
     def _rank_tools(self, goal: str) -> List[tuple[ToolSpec, float]]:
-        terms = set(goal.lower().split())
+        import re
+
+        terms = set(re.split(r"\W+", goal.lower()))
         ranked: List[tuple[ToolSpec, float]] = []
         for tool in self.registry.tools:
-            corpus = f"{tool.name} {tool.description}".lower().split()
+            corpus_text = f"{tool.name} {tool.description}".lower()
+            corpus = set(re.split(r"\W+", corpus_text))
             overlap = len(terms.intersection(corpus))
             score = overlap / max(len(terms), 1)
-            ranked.append((tool, score))
+            if score > 0:
+                ranked.append((tool, score))
         ranked.sort(key=lambda item: item[1], reverse=True)
-        if ranked and ranked[0][1] == 0:
-            return ranked[:1]
-        return [item for item in ranked if item[1] > 0]
+        return ranked
 
 
 @dataclass

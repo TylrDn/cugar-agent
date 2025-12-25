@@ -31,7 +31,7 @@ class QdrantBackend(VectorBackend):
             payload.append(
                 self._models.PointStruct(
                     id=str(uuid.uuid4()),
-                    vector=rec.embedding.tolist(),
+                    vector=rec.embedding,
                     payload={**rec.record.metadata, "text": rec.record.text},
                 )
             )
@@ -42,7 +42,7 @@ class QdrantBackend(VectorBackend):
             return []
         results = self._client.search(
             collection_name=self._collection_name,
-            query_vector=query_vector.tolist(),
+            query_vector=query_vector,
             limit=top_k,
         )
         hits: list[SearchHit] = []

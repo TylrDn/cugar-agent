@@ -40,6 +40,7 @@ class RagLoader:
 class RagRetriever:
     def __init__(self, backend: Optional[str] = None, profile: str = "default") -> None:
         self.memory = VectorMemory(backend_name=backend or "local", profile=profile)
+        self.memory.connect_backend()
 
     def query(self, query: str, top_k: int = 5) -> List[RagHit]:
         matches: List[SearchHit] = self.memory.search(query, top_k=top_k)
