@@ -44,5 +44,10 @@ All notable changes to the CUGAR Agent project will be documented in this file.
 
 ## [vNext]
 - In development: GitHub Actions CI, coverage reports, Langflow project inspector
+- ➕ Added: `scrape_tweets` MCP tool using `snscrape` for Twitter/X scraping
+- ➕ Added: `extract_article` MCP tool powered by `newspaper4k` style extraction
+- ➕ Added: `crypto_wallet` MCP tool wrapper for mnemonic, derivation, and signing flows
+- ➕ Added: `moon_agents` MCP tool exposing agent templates and plan scaffolds
+- ➕ Added: `vault_tools` MCP tool bundle for JSON queries, KV storage, and timestamps
 
 ---

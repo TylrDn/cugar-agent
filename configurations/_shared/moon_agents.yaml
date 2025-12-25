@@ -1,0 +1,10 @@
+---
+mcpServers:
+  moon_agents:
+    version: "0.1.0"
+    transport: stdio
+    command: python
+    args: ["-m", "cuga.mcp_servers.moon_agents.server"]
+    env:
+      CUGA_PROFILE_SANDBOX: "${CUGA_PROFILE_SANDBOX}"
+    description: "Moon dev AI agents wrapper for patterns and plan scaffolds"

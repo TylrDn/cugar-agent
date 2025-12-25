@@ -1,0 +1,10 @@
+---
+mcpServers:
+  vault_tools:
+    version: "0.1.0"
+    transport: stdio
+    command: python
+    args: ["-m", "cuga.mcp_servers.vault_tools.server"]
+    env:
+      CUGA_PROFILE_SANDBOX: "${CUGA_PROFILE_SANDBOX}"
+    description: "Curated vault MCP tools (json_query, kv_store, time_now)"
