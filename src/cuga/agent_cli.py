@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import os
 from pathlib import Path
 from typing import List, Optional
 
@@ -13,11 +14,21 @@ from cuga.agents.executor import Executor
 from cuga.agents.planner import Planner, PlanningPreferences
 from cuga.agents.registry import ToolRegistry
 from cuga.plugins import list_plugins, load_plugins
+from mcp.loader import load_registry, register_tools
+from mcp.runner import MCPRunner
 
 
 def _build_controller(plugin_paths: List[str]):
     registry = ToolRegistry()
     plugin_results = load_plugins(registry, plugin_paths)
+    if os.getenv("CUGA_ENABLE_MCP", "false").lower() in {"1", "true", "yes", "on"}:
+        mcp_registry = load_registry(os.getenv("CUGA_MCP_REGISTRY", "registry.yaml"))
+        register_tools(
+            registry,
+            mcp_registry,
+            MCPRunner(),
+            profile=os.getenv("CUGA_MCP_PROFILE", "default"),
+        )
     controller = Controller(planner=Planner(), executor=Executor(), registry=registry)
     return controller, plugin_results
 

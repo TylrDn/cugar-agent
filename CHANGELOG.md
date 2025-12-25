@@ -16,6 +16,8 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 - ➕ Added: `vault_tools` MCP tool bundle for JSON queries, KV storage, and timestamps
 - ➕ Added: CLI for listing agents, running goals, and exporting structured results
 - ➕ Added: External tool plugin system with discovery helpers and a template plugin example
+- ➕ Added: Env-gated MCP registry loader/runner wiring with sample `registry.yaml` and planner/executor integration
+- ➕ Added: Agent UI intent preview, invocation timeline, and state badge for clearer tool legibility
 - ➕ Added: Expanded guardrail verification script (`scripts/verify_guardrails.py`), inheritance markers, and CI enforcement
 - ➕ Added: Dual-mode LLM adapter layer with hybrid routing, budget guardrails, and config/env precedence
 - ➕ Added: Architecture/registry observability documentation set (overview, registry, tiers, sandboxes, compose, ADR, glossary)
@@ -55,6 +57,7 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 
 ### Testing
 - 🧪 Added: Expanded `scrape_tweets` test coverage for limits, dependencies, and health checks
+- 🧪 Added: Offline MCP registry, runner, and planner/executor tests backed by FastAPI mock servers
 
 ---
 

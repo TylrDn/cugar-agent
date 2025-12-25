@@ -1,0 +1,24 @@
+servers:
+  mock_filesystem:
+    url: http://localhost:8001
+    schema: http://localhost:8001/openapi.json
+    enabled_env: ENABLE_FILESYSTEM_MCP
+    tools:
+      - capability: "Filesystem"
+        action: "Read contacts"
+        operation_id: "readContacts"
+        description: "Read contact list from workspace files"
+        cost: 1.0
+        latency: 1.0
+  mock_crm:
+    url: http://localhost:8002
+    schema: http://localhost:8002/openapi.json
+    enabled: true
+    enabled_env: ENABLE_CRM_MCP
+    tools:
+      - capability: "CRM"
+        action: "Fetch contacts"
+        operation_id: "fetchContacts"
+        description: "Retrieve CRM contacts"
+        cost: 1.2
+        latency: 1.5

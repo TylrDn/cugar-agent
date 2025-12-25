@@ -12,6 +12,9 @@ env-dev:
 test:
 	uv run pytest -q
 
+mcp-mocks:
+	uv run python -m tests.mcp.mock_server
+
 docs:
 	python3 build/gen_tiers_table.py
 

@@ -36,6 +36,15 @@ interface CustomChatProps {
   initialChatStarted?: boolean;
 }
 
+type AgentState = "Idle" | "Planning" | "Executing" | "Generating";
+
+interface TimelineEntry {
+  id: string;
+  capability: string;
+  action: string;
+  status: "queued" | "running" | "completed" | "error";
+}
+
 export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHover, onMessageSent, onChatStarted, onThreadIdChange, initialChatStarted = false }: CustomChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -56,6 +65,9 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
   const [followupSuggestions, setFollowupSuggestions] = useState<string[]>([]);
   const [lastUserQuery, setLastUserQuery] = useState<string>("");
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set(['contacts.txt']));
+  const [agentState, setAgentState] = useState<AgentState>("Idle");
+  const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
+  const [timelineCollapsed, setTimelineCollapsed] = useState(true);
 
   // Notify parent when chat starts
   useEffect(() => {
@@ -229,12 +241,31 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
     return files;
   };
 
+  const intentPreview = inputValue
+    .split(/[.!?\n]/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+
+  const updateTimelineStatus = useCallback(
+    (id: string, status: TimelineEntry["status"]) => {
+      setTimeline((prev) => prev.map((entry) => (entry.id === id ? { ...entry, status } : entry)));
+    },
+    [setTimeline],
+  );
+
 
   const handleSend = async () => {
     if (!inputRef.current) return;
 
     const text = inputRef.current.textContent?.trim() || '';
     if (!text || isProcessing) return;
+
+    const timelineId = crypto.randomUUID();
+    const capability = selectedFiles.length ? "Filesystem" : "Planner";
+    const action = selectedFiles.length ? "Read tagged files" : "Route request";
+    setAgentState("Planning");
+    setTimeline((prev) => [...prev, { id: timelineId, capability, action, status: "queued" }]);
 
     // Convert file reference elements back to ./path format for backend processing
     let processedText = text;
@@ -282,6 +313,8 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
     setSelectedFiles([]);
     setShowExampleUtterances(false);
     setIsProcessing(true);
+    setAgentState("Executing");
+    updateTimelineStatus(timelineId, "running");
 
     // Create a new chat instance for this message
     const newChatInstance = createChatInstance();
@@ -317,10 +350,15 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
       console.log('[CustomChat] Sending message with threadId:', finalThreadId);
       // Call the streaming workflow with processed text (bracket format converted to ./path)
       await fetchStreamingData(newChatInstance as any, processedText, undefined, finalThreadId);
+      setAgentState("Generating");
+      updateTimelineStatus(timelineId, "completed");
     } catch (error) {
       console.error("Error sending message:", error);
+      updateTimelineStatus(timelineId, "error");
+      setAgentState("Idle");
     } finally {
       setIsProcessing(false);
+      setTimeout(() => setAgentState("Idle"), 250);
     }
   };
 
@@ -359,6 +397,50 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
     // Create a fresh chat instance
     currentChatInstanceRef.current = createChatInstance();
   };
+
+  const legibilityPanel = (
+    <div className="agent-legibility-bar">
+      <div className={`agent-state-badge state-${agentState.toLowerCase()}`} aria-label="Agent state">
+        {agentState}
+      </div>
+      <div className="intent-preview-block">
+        <div className="intent-preview-title">Intent preview</div>
+        {intentPreview.length > 0 ? (
+          <ul className="intent-preview-list">
+            {intentPreview.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="intent-preview-placeholder">Draft intents will appear as you type.</p>
+        )}
+      </div>
+      <button
+        type="button"
+        className="timeline-toggle"
+        onClick={() => setTimelineCollapsed(!timelineCollapsed)}
+        aria-expanded={!timelineCollapsed}
+      >
+        {timelineCollapsed ? "Show timeline" : "Hide timeline"} ({timeline.length})
+      </button>
+    </div>
+  );
+
+  const timelinePanel = !timelineCollapsed && (
+    <div className="timeline-panel">
+      <div className="timeline-header">Tool invocation timeline</div>
+      {timeline.length === 0 ? (
+        <p className="timeline-empty">Timeline events will appear when the agent runs tools.</p>
+      ) : (
+        timeline.map((entry) => (
+          <div key={entry.id} className="timeline-entry">
+            <span className="timeline-entry-label">{`${entry.capability} · ${entry.action}`}</span>
+            <span className={`timeline-status status-${entry.status}`}>{entry.status}</span>
+          </div>
+        ))
+      )}
+    </div>
+  );
 
   const handleContentEditableInput = (e: React.FormEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
@@ -927,6 +1009,8 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
                     />
                   </div>
                 )}
+                {legibilityPanel}
+                {timelinePanel}
                 <div className="chat-input-container-welcome">
                   <div className="textarea-wrapper">
                     <div
@@ -1066,6 +1150,8 @@ export function CustomChat({ onVariablesUpdate, onFileAutocompleteOpen, onFileHo
       {/* Input area only shown when chat has started */}
       {hasStartedChat && (
         <div className="custom-chat-input-area">
+          {legibilityPanel}
+          {timelinePanel}
           {/* Followup suggestions */}
           {followupSuggestions.length > 0 && !isProcessing && (
             <FollowupSuggestions
