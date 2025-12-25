@@ -26,6 +26,7 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 - 🔁 Changed: Reconciled agent lifecycle, tooling, and security documentation with current code enforcement boundaries
 - 🔁 Changed: Guardrail routing updated so root `AGENTS.md` remains canonical with per-directory inherit markers
 - 🔁 Changed: Guardrail verification now centralizes allowlists/keywords and supports env overrides to reduce drift
+- 🔁 Changed: Pytest default discovery now targets `tests/`, with docs/examples suites run through dedicated scripts and build artifacts ignored by default
 
 ### Fixed
 - 🐞 Fixed: Hardened `crypto_wallet` parameter parsing and clarified non-production security posture

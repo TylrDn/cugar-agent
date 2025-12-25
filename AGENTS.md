@@ -5,7 +5,7 @@ This root `AGENTS.md` is the **canonical authority** for the entire repository. 
 ---
 
 ## Quick editing checklist
-This checklist is the single source of truth for routing related updates; follow the referenced paths when making changes.
+This checklist is the single source of truth for routing-related updates; follow the referenced paths when making changes.
 | When you change… | Also update… |
 | --- | --- |
 | Guardrails | `CHANGELOG.md` (`## vNext`), `.github/workflows/guardrails.yml`, affected `AGENTS.md` files |
