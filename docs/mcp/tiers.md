@@ -1,5 +1,5 @@
 Tier 1: foundational defaults for orchestration, execution, filesystem, web/search, and VCS. Registry-driven, default enabled.
-Tier 2: optional extensions (finance/CMS/social/DB/vector/observability), default disabled. Unrated = community/experimental only.
+Tier 2 + Unrated: optional finance/CMS/social/DB/vector/observability, default disabled. Unrated = community/experimental only.
 
 Integration matrix (source of truth: docs/mcp/registry.yaml; sandboxes in docs/compute/sandboxes.md; observability in docs/observability/config.md)
 | tool | tier | registry id | auth env vars | sandbox profile | fs scope | network | observability taps | status |

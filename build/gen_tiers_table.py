@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Sequence
 
 import yaml
 
@@ -26,25 +26,26 @@ def _merge_entry(defaults: Dict, entry: Dict) -> Dict:
 
 def _auth_env(env: Dict) -> str:
     keys: List[str] = []
-    for key, val in env.items():
+    for val in env.values():
         if isinstance(val, str):
-            found = ENV_PATTERN.findall(val)
-            keys.extend(found or [key])
-    deduped = sorted(dict.fromkeys(keys))
+            matches = ENV_PATTERN.findall(val)
+            if matches:
+                keys.extend(matches)
+            else:
+                keys.append(val.split(":", 1)[0] if ":" in val else val)
+    deduped = sorted(dict.fromkeys(k for k in keys if k))
     return ", ".join(deduped) if deduped else "none"
 
 
-def _fs_scope(mounts: List[str]) -> str:
-    if not mounts:
-        return "none"
-    return "; ".join(mounts)
+def _fs_scope(mounts: Sequence[str]) -> str:
+    return "; ".join(mounts) if mounts else "none"
 
 
 def _network_flag(protocol: str) -> str:
     return "on" if protocol else "off"
 
 
-def _observability(scopes: List[str]) -> str:
+def _observability(scopes: Sequence[str]) -> str:
     return "TraceSink/Export" if "observability" in scopes else "TraceSink"
 
 
@@ -58,19 +59,14 @@ def _rows(data: Dict) -> List[Dict]:
     return sorted(entries, key=lambda e: (int(e.get("tier", 0)), _titleize(e["id"])))
 
 
-def generate() -> str:
-    registry = yaml.safe_load(REGISTRY_PATH.read_text())
-    rows = _rows(registry)
-    lines = [
-        "Tier 1: foundational defaults for orchestration, execution, filesystem, web/search, and VCS. Registry-driven, default enabled.",
-        "Tier 2: optional extensions (finance/CMS/social/DB/vector/observability), default disabled. Unrated = community/experimental only.",
-        "",
-        "Integration matrix (source of truth: docs/mcp/registry.yaml; sandboxes in docs/compute/sandboxes.md; observability in docs/observability/config.md)",
+def _render_table(rows: List[Dict]) -> str:
+    header = [
         "| tool | tier | registry id | auth env vars | sandbox profile | fs scope | network | observability taps | status |",
         "|------|------|-------------|---------------|-----------------|---------|---------|--------------------|--------|",
     ]
+    lines: List[str] = header.copy()
     for entry in rows:
-        tool_name = _titleize(entry["id"])
+        tool_name = entry.get("name") or _titleize(entry["id"])
         lines.append(
             "| {tool} | {tier} | {rid} | {auth} | {sandbox} | {fs} | {net} | {obs} | {status} |".format(
                 tool=tool_name,
@@ -88,9 +84,20 @@ def generate() -> str:
     return "\n".join(lines)
 
 
+def generate() -> str:
+    registry = yaml.safe_load(REGISTRY_PATH.read_text())
+    rows = _rows(registry)
+    preface = [
+        "Tier 1: foundational defaults for orchestration, execution, filesystem, web/search, and VCS. Registry-driven, default enabled.",
+        "Tier 2 + Unrated: optional finance/CMS/social/DB/vector/observability, default disabled. Unrated = community/experimental only.",
+        "",
+        "Integration matrix (source of truth: docs/mcp/registry.yaml; sandboxes in docs/compute/sandboxes.md; observability in docs/observability/config.md)",
+    ]
+    return "\n".join(preface + [_render_table(rows)])
+
+
 def main() -> None:
-    content = generate()
-    OUTPUT_PATH.write_text(content)
+    OUTPUT_PATH.write_text(generate())
 
 
 if __name__ == "__main__":

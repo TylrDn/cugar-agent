@@ -1,6 +1,6 @@
 # Observability and Budget Controls
 
-Set env keys in `.env`, `ops/env/orchestrator.env`, or `ops/env/observability.env`; compose anchors in `ops/docker-compose.proposed.yaml` mirror the same names.
+Set env keys in `.env`, `ops/env/orchestrator.env`, `ops/env/observability.env`, or compose anchors in `ops/docker-compose.proposed.yaml`.
 
 Sampling
 - AGENT_TRACE_SAMPLE_RATE (preferred)

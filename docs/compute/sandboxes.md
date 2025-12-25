@@ -18,4 +18,4 @@ Table 2: compose service mapping
 | node-slim       | mcp.web-slim        |
 | node-full       | mcp.web-full        |
 
-`mcp.web` selection: Option A (preferred) run `mcp.web-slim` by default and switch to `mcp.web-full` by setting `WEB_SERVICE=mcp.web-full` (or enabling a `web-full` profile) in compose; Option B use a single `mcp.web` service with an env toggle such as `WEB_PROFILE=node-slim|node-full`.
+`mcp.web` profile selection: Option A (preferred) run `mcp.web-slim` by default and switch to `mcp.web-full` by enabling the `web-full` profile or setting `WEB_SERVICE=mcp.web-full` in compose. Option B use a single `mcp.web` service with an env toggle such as `WEB_PROFILE=node-slim|node-full`.

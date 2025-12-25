@@ -2,8 +2,8 @@
 # enabled=false entries are ignored at load time even if present in compose
 version: v1
 defaults:
-  enabled: true
   tier: 1
+  enabled: true
   protocol: mcp
   sandbox: py-slim
   scopes: []
@@ -11,271 +11,180 @@ defaults:
   mounts: []
 entries:
   - id: langflow
-    tier: 1
-    enabled: true
     protocol: http
     ref: ${LANGFLOW_HOST:-http://langflow:7860}
     sandbox: orchestrator
     scopes: [orchestrator, control]
     env:
-      LANGFLOW_API_KEY: ${LANGFLOW_API_KEY:?}
+      LANGFLOW_API_KEY: '${LANGFLOW_API_KEY:?}'
     mounts: []
   - id: altk
-    tier: 1
-    enabled: true
     protocol: http
     ref: ${ALTK_HOST:-http://altk:8080}
     sandbox: orchestrator
     scopes: [orchestrator, control]
     env:
-      ALTK_TOKEN: ${ALTK_TOKEN:?}
+      ALTK_TOKEN: '${ALTK_TOKEN:?}'
     mounts: []
+
   - id: mcp.e2b
-    tier: 1
-    enabled: true
-    protocol: mcp
-    ref: docker://e2b
     sandbox: py-full
+    ref: docker://e2b
     scopes: [exec]
     env:
-      E2B_API_KEY: ${E2B_API_KEY:?}
-    mounts:
-      - /workdir:ro
-      - /workdir/output:rw
+      E2B_API_KEY: '${E2B_API_KEY:?}'
+    mounts: [/workdir:ro, /workdir/output:rw]
   - id: mcp.docker
-    tier: 1
-    enabled: true
-    protocol: mcp
+    sandbox: py-full
     ref: docker://sandbox
-    sandbox: py-full
     scopes: [exec]
-    env: {}
-    mounts:
-      - /workdir:ro
-      - /workdir/output:rw
+    mounts: [/workdir:ro, /workdir/output:rw]
   - id: mcp.fs
-    tier: 1
-    enabled: true
-    protocol: mcp
     ref: docker://filesystem
-    sandbox: py-slim
     scopes: [fs]
-    env: {}
-    mounts:
-      - /workspace:ro
-      - /workspace/output:rw
+    mounts: [/workspace:ro, /workspace/output:rw]
   - id: mcp.fastfs
-    tier: 1
-    enabled: true
-    protocol: mcp
     ref: docker://fast-filesystem-mcp
-    sandbox: py-slim
     scopes: [fs]
-    env: {}
-    mounts:
-      - /workspace:ro
-      - /workspace/output:rw
+    mounts: [/workspace:ro, /workspace/output:rw]
   - id: mcp.llmcontext
-    tier: 1
-    enabled: true
-    protocol: mcp
     ref: docker://llm-context
-    sandbox: py-slim
     scopes: [context]
-    env: {}
-    mounts:
-      - /workspace/output:rw
+    mounts: [/workspace/output:rw]
   - id: mcp.filestash
-    tier: 1
-    enabled: true
-    protocol: mcp
+    sandbox: py-full
     ref: docker://filestash
-    sandbox: py-full
     scopes: [backup]
-    env: {}
-    mounts:
-      - /workspace/output:rw
+    mounts: [/workspace/output:rw]
   - id: mcp.backup
-    tier: 1
-    enabled: true
-    protocol: mcp
-    ref: docker://backup
     sandbox: py-full
+    ref: docker://backup
     scopes: [backup]
-    env: {}
-    mounts:
-      - /workspace/output:rw
+    mounts: [/workspace/output:rw]
   - id: mcp.browser
-    tier: 1
-    enabled: true
-    protocol: mcp
-    ref: docker://browser
     sandbox: node-full
+    ref: docker://browser
     scopes: [web]
     env:
-      BROWSER_API_KEY: ${BROWSER_API_KEY:-""}
+      BROWSER_API_KEY: '${BROWSER_API_KEY:-}'
     mounts: []
   - id: mcp.search
-    tier: 1
-    enabled: true
-    protocol: mcp
-    ref: docker://search
     sandbox: node-slim
+    ref: docker://search
     scopes: [web]
     env:
-      SEARCH_API_KEY: ${SEARCH_API_KEY:-""}
+      SEARCH_API_KEY: '${SEARCH_API_KEY:-}'
     mounts: []
   - id: mcp.snscrape
-    tier: 1
-    enabled: true
-    protocol: mcp
-    ref: docker://snscrape
     sandbox: py-full
+    ref: docker://snscrape
     scopes: [social]
     env: {}
     mounts: []
-    # license: GPL-3 (runtime sandboxed)
+    # license: GPL-3 (sandboxed)
   - id: mcp.newspaper
-    tier: 1
-    enabled: true
-    protocol: mcp
-    ref: docker://newspaper4k
     sandbox: py-full
+    ref: docker://newspaper4k
     scopes: [news]
-    env: {}
     mounts: []
   - id: mcp.git
-    tier: 1
-    enabled: true
-    protocol: mcp
     ref: docker://git
-    sandbox: py-slim
     scopes: [vcs]
-    env: {}
-    mounts:
-      - /workspace/repos:rw
+    mounts: [/workspace/repos:rw]
   - id: mcp.github
-    tier: 1
-    enabled: true
-    protocol: mcp
     ref: docker://github
-    sandbox: py-slim
     scopes: [vcs]
     env:
-      GITHUB_TOKEN: ${GITHUB_TOKEN:?}
+      GITHUB_TOKEN: '${GITHUB_TOKEN:?}'
     mounts: []
   - id: mcp.gitlab
-    tier: 1
-    enabled: true
-    protocol: mcp
     ref: docker://gitlab
-    sandbox: py-slim
     scopes: [vcs]
     env:
-      GITLAB_TOKEN: ${GITLAB_TOKEN:?}
+      GITLAB_TOKEN: '${GITLAB_TOKEN:?}'
     mounts: []
   - id: mcp.gitingest
-    tier: 1
-    enabled: true
-    protocol: mcp
     ref: docker://gitingest
-    sandbox: py-slim
     scopes: [vcs]
-    env: {}
-    mounts:
-      - /workspace/repos:ro
+    mounts: [/workspace/repos:ro]
   - id: mcp.phabricator
-    tier: 1
-    enabled: true
-    protocol: mcp
     ref: docker://phabricator
-    sandbox: py-slim
     scopes: [vcs]
     env:
-      PHAB_TOKEN: ${PHAB_TOKEN:-""}
+      PHAB_TOKEN: '${PHAB_TOKEN:-}'
     mounts: []
 
   - id: mcp.crypto
     tier: 2
     enabled: false
-    protocol: mcp
-    ref: docker://crypto
     sandbox: py-full
+    ref: docker://crypto
     scopes: [finance]
     env:
-      CRYPTO_API_KEY: ${CRYPTO_API_KEY:-""}
+      CRYPTO_API_KEY: '${CRYPTO_API_KEY:-}'
     mounts: []
   - id: mcp.finance
     tier: 2
     enabled: false
-    protocol: mcp
-    ref: docker://finance
     sandbox: py-full
+    ref: docker://finance
     scopes: [finance]
     env:
-      FIN_API_KEY: ${FIN_API_KEY:-""}
+      FIN_API_KEY: '${FIN_API_KEY:-}'
     mounts: []
   - id: mcp.wordpress
     tier: 2
     enabled: false
-    protocol: mcp
-    ref: docker://wordpress
     sandbox: node-full
+    ref: docker://wordpress
     scopes: [cms]
     env:
-      WP_TOKEN: ${WP_TOKEN:-""}
-    mounts:
-      - /workspace/output:rw
+      WP_TOKEN: '${WP_TOKEN:-}'
+    mounts: [/workspace/output:rw]
   - id: mcp.social
     tier: 2
     enabled: false
-    protocol: mcp
-    ref: docker://social
     sandbox: node-full
+    ref: docker://social
     scopes: [social]
-    env: {}
     mounts: []
   - id: mcp.sqldb
     tier: 2
     enabled: false
-    protocol: mcp
-    ref: docker://sql
     sandbox: py-full
+    ref: docker://sql
     scopes: [db]
     env:
-      SQL_URL: ${SQL_URL:-""}
-    mounts:
-      - /workspace/db:rw
+      SQL_URL: '${SQL_URL:-}'
+    mounts: [/workspace/db:rw]
   - id: mcp.vectordb
     tier: 2
     enabled: false
-    protocol: mcp
-    ref: docker://vector
     sandbox: py-full
+    ref: docker://vector
     scopes: [vector]
     env:
-      VECTOR_URL: ${VECTOR_URL:-""}
-    mounts:
-      - /workspace/vector:rw
+      VECTOR_URL: '${VECTOR_URL:-}'
+    mounts: [/workspace/vector:rw]
   - id: observability.langfuse
     tier: 2
     enabled: false
     protocol: http
-    ref: ${LANGFUSE_HOST:-http://langfuse:3000}
     sandbox: orchestrator
+    ref: ${LANGFUSE_HOST:-http://langfuse:3000}
     scopes: [observability]
     env:
-      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-""}
-      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-""}
+      LANGFUSE_PUBLIC_KEY: '${LANGFUSE_PUBLIC_KEY:-}'
+      LANGFUSE_SECRET_KEY: '${LANGFUSE_SECRET_KEY:-}'
     mounts: []
   - id: observability.langsmith
     tier: 2
     enabled: false
     protocol: http
-    ref: ${LANGCHAIN_ENDPOINT:-https://api.smith.langchain.com}
     sandbox: orchestrator
+    ref: ${LANGCHAIN_ENDPOINT:-https://api.smith.langchain.com}
     scopes: [observability]
     env:
-      LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-""}
-      LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-""}
+      LANGCHAIN_API_KEY: '${LANGCHAIN_API_KEY:-}'
+      LANGCHAIN_PROJECT: '${LANGCHAIN_PROJECT:-}'
     mounts: []
