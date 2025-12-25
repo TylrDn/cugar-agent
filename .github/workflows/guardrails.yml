@@ -1,0 +1,33 @@
+name: Guardrails
+
+on:
+  pull_request:
+  push:
+    branches: ["main", "master"]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+
+      - name: Run guardrail checks
+        env:
+          GUARDRAILS_BASE_REF: "origin/${{ github.event.pull_request.base.ref || 'main' }}"
+        run: python scripts/verify_guardrails.py --base "$GUARDRAILS_BASE_REF"
+
+      - name: Run guardrail unit tests
+        run: pytest tests/test_verify_guardrails.py
