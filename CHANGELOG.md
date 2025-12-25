@@ -1,7 +1,51 @@
-
 # 📦 CHANGELOG
 
 All notable changes to the CUGAR Agent project will be documented in this file.
+This changelog follows the guidance from [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
+
+---
+
+## vNext
+
+### Added
+- In development: GitHub Actions CI, coverage reports, Langflow project inspector
+- ➕ Added: `scrape_tweets` MCP tool using `snscrape` for Twitter/X scraping
+- ➕ Added: `extract_article` MCP tool powered by `newspaper4k` style extraction
+- ➕ Added: `crypto_wallet` MCP tool wrapper for mnemonic, derivation, and signing flows
+- ➕ Added: `moon_agents` MCP tool exposing agent templates and plan scaffolds
+- ➕ Added: `vault_tools` MCP tool bundle for JSON queries, KV storage, and timestamps
+- ➕ Added: CLI for listing agents, running goals, and exporting structured results
+- ➕ Added: External tool plugin system with discovery helpers and a template plugin example
+- ➕ Added: Expanded guardrail verification script (`scripts/verify_guardrails.py`), inheritance markers, and CI enforcement
+
+### Changed
+- 🔁 Changed: Centralized MCP server utilities for payload handling and sandbox lookup
+- 🔁 Changed: Planner now builds multi-step plans with cost/latency optimization, logging, and trace outputs
+- 🔁 Changed: Controller and executor now emit structured audit traces and sanitize handler failures
+- 🔁 Changed: Tool registry now deep-copies resolved entries and profile snapshots to prevent caller mutations from leaking between tools
+- 🔁 Changed: Reconciled agent lifecycle, tooling, and security documentation with current code enforcement boundaries
+- 🔁 Changed: Guardrail routing updated so root `AGENTS.md` remains canonical with per-directory inherit markers
+- 🔁 Changed: Guardrail verification now centralizes allowlists/keywords and supports env overrides to reduce drift
+
+### Fixed
+- 🐞 Fixed: Hardened `crypto_wallet` parameter parsing and clarified non-production security posture
+- 🐞 Fixed: `extract_article` dependency fallback now respects missing `html` inputs
+- 🐞 Fixed: `moon_agents` no longer returns sandbox filesystem paths
+- 🐞 Fixed: `vault_tools` KV store now uses locked, atomic writes to avoid race conditions
+- 🐞 Fixed: `vault_tools` detects corrupt stores, enforces locking support, and writes under held locks
+- 🐞 Fixed: `vault_tools` KV store writes use fsynced temp files to preserve atomic persistence safety
+- 🐞 Fixed: `_shared` CLI argument parsing now errors when `--json` is missing a value
+- 🐞 Fixed: `crypto_wallet` narrows `word_count` parsing errors to expected types
+- 🐞 Fixed: `_shared.load_payload` narrows JSON parsing exceptions for clearer diagnostics
+- 🐞 Fixed: `extract_article` fallback parsing now only triggers for expected extraction or network failures
+- 🐞 Fixed: Guardrail checker git diff detection now validates git refs and uses fixed git diff argv to avoid unchecked subprocess input
+
+### Documentation
+- 📚 Documented: Branch cleanup workflow and issue stubs for consolidating Codex branches
+- 📚 Documented: Root guardrails, audit expectations, and routing table for guardrail updates
+
+### Testing
+- 🧪 Added: Expanded `scrape_tweets` test coverage for limits, dependencies, and health checks
 
 ---
 
@@ -41,35 +85,5 @@ All notable changes to the CUGAR Agent project will be documented in this file.
 - CLI runner may need test scaffolding
 - Tool schema validation needs stronger contract enforcement
 - Logging verbosity defaults may need hardening
-
----
-
-## [vNext]
-- In development: GitHub Actions CI, coverage reports, Langflow project inspector
-- ➕ Added: `scrape_tweets` MCP tool using `snscrape` for Twitter/X scraping
-- ➕ Added: `extract_article` MCP tool powered by `newspaper4k` style extraction
-- ➕ Added: `crypto_wallet` MCP tool wrapper for mnemonic, derivation, and signing flows
-- ➕ Added: `moon_agents` MCP tool exposing agent templates and plan scaffolds
-- ➕ Added: `vault_tools` MCP tool bundle for JSON queries, KV storage, and timestamps
-- 🔁 Changed: Centralized MCP server utilities for payload handling and sandbox lookup
-- 🐞 Fixed: Hardened `crypto_wallet` parameter parsing and clarified non-production security posture
-- 🐞 Fixed: `extract_article` dependency fallback now respects missing `html` inputs
-- 🐞 Fixed: `moon_agents` no longer returns sandbox filesystem paths
-- 🐞 Fixed: `vault_tools` KV store now uses locked, atomic writes to avoid race conditions
-- 🐞 Fixed: `vault_tools` detects corrupt stores, enforces locking support, and writes under held locks
-- 🐞 Fixed: `extract_article` fallback parser only activates when HTML is provided, avoiding masked network errors
-- 🐞 Fixed: `_shared` CLI argument parsing now errors when `--json` is missing a value
-- 🐞 Fixed: `crypto_wallet` narrows `word_count` parsing errors to expected types
-- 🧪 Added: Expanded `scrape_tweets` test coverage for limits, dependencies, and health checks
-- 🐞 Fixed: `vault_tools` KV store writes use fsynced temp files to preserve atomic persistence safety
-- 🐞 Fixed: `_shared.load_payload` narrows JSON parsing exceptions for clearer diagnostics
-- 🐞 Fixed: `extract_article` fallback parsing now only triggers for expected extraction or network failures
-- 🐞 Fixed: Tool registry now deep-copies resolved entries and profile snapshots to prevent caller mutations from leaking between tools
-- ➕ Added: CLI for listing agents, running goals, and exporting structured results
-- ➕ Added: External tool plugin system with discovery helpers and a template plugin example
-- 🔁 Changed: Planner now builds multi-step plans with cost/latency optimization, logging, and trace outputs
-- 🔁 Changed: Controller and executor now emit structured audit traces and sanitize handler failures
-- 📚 Documented: Branch cleanup workflow and issue stubs for consolidating Codex branches
-- 🔁 Changed: Reconciled agent lifecycle, tooling, and security documentation with current code enforcement boundaries
 
 ---
