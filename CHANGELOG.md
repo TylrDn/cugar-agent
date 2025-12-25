@@ -59,5 +59,8 @@ All notable changes to the CUGAR Agent project will be documented in this file.
 - 🐞 Fixed: `_shared` CLI argument parsing now errors when `--json` is missing a value
 - 🐞 Fixed: `crypto_wallet` narrows `word_count` parsing errors to expected types
 - 🧪 Added: Expanded `scrape_tweets` test coverage for limits, dependencies, and health checks
+- 🐞 Fixed: `vault_tools` KV store writes use fsynced temp files to preserve atomic persistence safety
+- 🐞 Fixed: `_shared.load_payload` narrows JSON parsing exceptions for clearer diagnostics
+- 🐞 Fixed: `extract_article` fallback parsing now only triggers for expected extraction or network failures
 
 ---

@@ -30,7 +30,7 @@ def load_payload() -> Dict[str, Any]:
             raise RequestError("Missing value for --json argument")
         try:
             return json.loads(sys.argv[idx + 1])
-        except Exception as exc:  # noqa: BLE001
+        except (json.JSONDecodeError, TypeError) as exc:
             raise RequestError("Invalid JSON payload", details={"error": str(exc)}) from exc
     raw = sys.stdin.read().strip() or "{}"
     try:

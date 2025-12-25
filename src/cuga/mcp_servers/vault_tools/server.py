@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -98,10 +100,24 @@ def _read_store(handle) -> Dict[str, Any]:
 
 
 def _write_store(handle, data: Dict[str, Any]) -> None:
-    handle.seek(0)
-    handle.truncate()
-    handle.write(json.dumps(data))
-    handle.flush()
+    path = Path(handle.name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        "w",
+        encoding="utf-8",
+        dir=path.parent,
+        prefix=path.name + ".tmp.",
+        delete=False,
+    ) as tmp:
+        json.dump(data, tmp)
+        tmp.flush()
+        os.fsync(tmp.fileno())
+    os.replace(tmp.name, path)
+    dir_fd = os.open(path.parent, os.O_DIRECTORY)
+    try:
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
 
 
 def _kv_store(params: Dict[str, Any], sandbox: Path) -> Dict[str, Any]:

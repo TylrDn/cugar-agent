@@ -5,6 +5,8 @@ from datetime import datetime
 from html.parser import HTMLParser
 from typing import Any, Dict, List, Optional
 
+import requests
+
 from cuga.mcp_servers._shared import RequestError, get_sandbox, run_main
 
 
@@ -126,18 +128,19 @@ def _extract_article(params: Dict[str, Any]) -> Dict[str, Any]:
             timeout_ms if isinstance(timeout_ms, int) else None,
         )
     except RequestError as exc:
-        if exc.type != "missing_dependency":
+        fallback_allowed = exc.type in {"missing_dependency", "network", "bad_request"}
+        if not fallback_allowed or html_val is None:
+            if exc.type == "missing_dependency" and html_val is None:
+                raise RequestError(
+                    "newspaper4k dependency is required when only 'url' is provided",
+                    type_="missing_dependency",
+                    details={"fields": ["url"], "hint": "Provide 'html' to use fallback parser."},
+                ) from exc
             raise
-        if html_val is None:
-            raise RequestError(
-                "newspaper4k dependency is required when only 'url' is provided",
-                type_="missing_dependency",
-                details={"fields": ["url"], "hint": "Provide 'html' to use fallback parser."},
-            ) from exc
         extractor = _SimpleHTMLExtractor()
         extractor.feed(html_val)
         article = extractor.result()
-    except Exception:
+    except (requests.RequestException, TimeoutError, ConnectionError, ValueError) as exc:
         if html_val is None:
             raise
         extractor = _SimpleHTMLExtractor()
