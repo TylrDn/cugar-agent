@@ -28,16 +28,14 @@ def _coerce_bool(value: Any, *, default: bool = True) -> bool:
 
 
 def _env_enabled(entry: Mapping[str, Any], env: Mapping[str, str], *, default: bool = True) -> bool:
-    enabled = _coerce_bool(entry.get("enabled"), default=default)
-    if not enabled:
-        return False
+    config_enabled = _coerce_bool(entry.get("enabled"), default=default)
     env_key = entry.get("enabled_env")
-    if env_key is None:
-        return enabled
-    env_val = env.get(env_key)
-    if env_val is None:
-        return False
-    return env_val.strip().lower() in _BOOL_TRUE
+    if env_key is not None:
+        env_val = env.get(env_key)
+        if env_val is not None:
+            return env_val.strip().lower() in _BOOL_TRUE
+
+    return config_enabled
 
 
 def _parse_tool(name: str, raw: Mapping[str, Any], env: Mapping[str, str]) -> MCPToolDefinition:
@@ -45,10 +43,12 @@ def _parse_tool(name: str, raw: Mapping[str, Any], env: Mapping[str, str]) -> MC
         raise RegistryValidationError(f"Tool '{name}' must be a mapping")
     enabled = _env_enabled(raw, env)
     operation_id = raw.get("operation_id")
+    if operation_id is not None and not isinstance(operation_id, str):
+        raise RegistryValidationError(f"Tool '{name}' operation_id must be a string when provided")
     method = raw.get("method")
-    path = raw.get("path")
     if method is not None and not isinstance(method, str):
         raise RegistryValidationError(f"Tool '{name}' method must be a string when provided")
+    path = raw.get("path")
     if path is not None and not isinstance(path, str):
         raise RegistryValidationError(f"Tool '{name}' path must be a string when provided")
     if operation_id is None and (method is None or path is None):

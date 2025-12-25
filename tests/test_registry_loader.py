@@ -65,9 +65,10 @@ def test_duplicates_only_for_enabled(monkeypatch, tmp_path: Path):
 
     base.write_text(
         """
-fragments:
-  - fragments/one.yaml
-  - fragments/two.yaml
+defaults:
+  - _self_
+  - fragments/one
+  - fragments/two
 servers:
   shadow:
     url: http://disabled
@@ -112,13 +113,16 @@ def test_tool_method_and_path_type_validation():
         _parse_tool("bad", {"method": 123, "path": "/foo"}, {})
     with pytest.raises(RegistryValidationError):
         _parse_tool("bad", {"method": "get", "path": 5}, {})
+    with pytest.raises(RegistryValidationError):
+        _parse_tool("bad", {"operation_id": 9, "method": "get", "path": "/foo"}, {})
 
 
 def test_env_enabled_semantics(monkeypatch):
     env = {"FLAG": "1"}
     assert _env_enabled({"enabled": True, "enabled_env": "FLAG"}, env)
-    assert not _env_enabled({"enabled": False, "enabled_env": "FLAG"}, env)
+    assert _env_enabled({"enabled": False, "enabled_env": "FLAG"}, env)
     assert not _env_enabled({"enabled": True, "enabled_env": "MISSING"}, env)
+    assert _env_enabled({"enabled": True}, env)
 
 
 def test_roundtrip_with_repo_config(monkeypatch):
