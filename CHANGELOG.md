@@ -8,6 +8,11 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 ## vNext
 
 ### Added
+- ➕ Added: Modular `cuga.modular` package with planner/worker/tool/memory/observability scaffolding ready for LangGraph/LangChain
+- ➕ Added: Vector memory abstraction with in-memory fallback and optional Chroma/Qdrant/Weaviate/Milvus connectors
+- ➕ Added: LlamaIndex RAG loader/retriever utilities and Langfuse/OpenInference observability hooks
+- ➕ Added: Developer tooling (.editorconfig, .gitattributes, pre-commit config, expanded Makefile) and CI workflow `ci.yml`
+- ➕ Added: Templates and documentation for `.env`, roadmap, and multi-agent examples under `agents/`, `tools/`, `memory/`, and `rag/`
 - In development: GitHub Actions CI, coverage reports, Langflow project inspector
 - ➕ Added: `scrape_tweets` MCP tool using `snscrape` for Twitter/X scraping
 - ➕ Added: `extract_article` MCP tool powered by `newspaper4k` style extraction
@@ -53,6 +58,7 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 - 🐞 Fixed: MCP registry loader enforces enabled-aware duplicate detection, method/path type validation (including `operation_id`), and environment variables that override disabled entries when set
 
 ### Documentation
+- 📚 Rewrote README/USAGE/AGENTS/CONTRIBUTING/SECURITY with 2025 agent-stack guidance and integration steps
 - 📚 Documented: Branch cleanup workflow and issue stubs for consolidating Codex branches
 - 📚 Documented: Root guardrails, audit expectations, and routing table for guardrail updates
 - 📚 Documented: Hydra-based registry composition (env overrides, enabled-only duplicate detection) and linked MCP integration guidance

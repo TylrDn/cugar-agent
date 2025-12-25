@@ -1,0 +1,7 @@
+backend: ${VECTOR_BACKEND:-local}
+host: ${VECTOR_HOST:-localhost}
+port: ${VECTOR_PORT:-6333}
+namespace: ${VECTOR_NAMESPACE:-cuga-demo}
+collection: cuga
+metadata_keys:
+  - profile

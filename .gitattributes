@@ -1,18 +1,3 @@
-# Exclude build directories from diffs and linguist statistics
-src/frontend_workspaces/extension/releases/** -diff
-src/frontend_workspaces/extension/releases/** linguist-vendored
-src/frontend_workspaces/frontend/dist/** -diff
-src/frontend_workspaces/frontend/dist/** linguist-vendored
-src/frontend_workspaces/shared/dist/** -diff
-src/frontend_workspaces/shared/dist/** linguist-vendored
-
-# Ignore all JSON/YAML/TXT/CSV files (nested across repo)
-**/*.json
-**/*.yaml
-**/*.yml
-**/*.txt
-**/*.csv
-
-# (Optional) keep important ones
-\!package.json
-\!.github/workflows/*.yml
+* text=auto eol=lf
+*.sh linguist-language=Shell
+*.md linguist-language=Markdown

@@ -1,0 +1,8 @@
+enabled: ${RAG_ENABLED:-false}
+loader:
+  source_dir: rag/sources
+  recursive: true
+retriever:
+  top_k: 5
+  similarity: cosine
+vector_backend: ${VECTOR_BACKEND:-local}

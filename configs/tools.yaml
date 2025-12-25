@@ -1,0 +1,9 @@
+- name: echo
+  description: Echo text back to the caller
+  module: cuga.modular.tools.echo
+  parameters:
+    type: object
+    properties:
+      text:
+        type: string
+    required: [text]
