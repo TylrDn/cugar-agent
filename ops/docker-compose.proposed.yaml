@@ -1,4 +1,5 @@
 version: "3.9"
+
 services:
   orchestrator:
     image: cuga/orchestrator:latest
@@ -6,7 +7,10 @@ services:
       - ./ops/env/orchestrator.env
       - ./ops/env/observability.env
     environment:
-      # Observability (see docs/observability/config.md)
+      # Registry + profile
+      # REGISTRY_PATH: "/app/registry.yaml"
+      # WEB_SERVICE: "mcp.web-slim" # switch to mcp.web-full when needed
+      # Observability/budgets (see docs/observability/config.md)
       # AGENT_TRACE_SAMPLE_RATE: "0.1"
       # AGENT_TRACE_MAX_LATENCY_MS: "5000"
       # AGENT_TOOL_MAX_LATENCY_MS: "tool=3000,search=2000"
@@ -28,8 +32,9 @@ services:
     depends_on:
       - mcp.e2b
       - mcp.fs
-      - mcp.web
+      - ${WEB_SERVICE:-mcp.web-slim}
       - mcp.vcs
+      - mcp.gitingest
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -42,8 +47,8 @@ services:
     environment:
       # E2B_API_KEY: ""
     volumes:
-      - ./workspace:/workspace:ro
-      - ./workspace/output:/workspace/output:rw
+      - ./workspace:/workdir:ro
+      - ./workspace/output:/workdir/output:rw
     healthcheck:
       test: ["CMD", "echo", "ok"]
       interval: 60s
@@ -54,17 +59,28 @@ services:
     volumes:
       - ./workspace:/workspace:ro
       - ./workspace/output:/workspace/output:rw
-    read_only: true
     healthcheck:
       test: ["CMD", "echo", "ok"]
       interval: 60s
 
-  mcp.web:
+  mcp.web-slim:
     image: fastmcp/browser:latest
     profiles: ["tier1"]
     environment:
       # BROWSER_API_KEY: ""
       # SEARCH_API_KEY: ""
+      WEB_PROFILE: "node-slim"
+    healthcheck:
+      test: ["CMD", "echo", "ok"]
+      interval: 60s
+
+  mcp.web-full:
+    image: fastmcp/browser:latest
+    profiles: ["web-full"]
+    environment:
+      # BROWSER_API_KEY: ""
+      # SEARCH_API_KEY: ""
+      WEB_PROFILE: "node-full"
     healthcheck:
       test: ["CMD", "echo", "ok"]
       interval: 60s
@@ -74,9 +90,19 @@ services:
     profiles: ["tier1"]
     volumes:
       - ./workspace/repos:/workspace/repos:rw
-    read_only: false
+    read_only: true
     healthcheck:
       test: ["CMD", "git", "--version"]
+      interval: 60s
+
+  mcp.gitingest:
+    image: fastmcp/gitingest:latest
+    profiles: ["tier1"]
+    volumes:
+      - ./workspace/repos:/workspace/repos:ro
+    read_only: true
+    healthcheck:
+      test: ["CMD", "echo", "ok"]
       interval: 60s
 
   observability:

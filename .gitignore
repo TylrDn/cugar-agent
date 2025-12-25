@@ -11,7 +11,9 @@ node_modules
 /frontend/node_modules/
 
 # Python build artifacts
+!/build
 /build/
+!/build/gen_tiers_table.py
 /dist/
 *.egg-info/
 experiment_results_*
