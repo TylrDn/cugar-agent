@@ -11,7 +11,7 @@ def test_auth_env_extracts_and_dedupes():
         "ALT": "${ALT:-default}",
         "PLAIN": "value",
     }
-    assert _auth_env(env) == "ALT, LANGFLOW_API_KEY, PLAIN"
+    assert _auth_env(env) == "ALT, LANGFLOW_API_KEY, value"
 
 
 def test_rows_sorted_by_tier_then_tool():

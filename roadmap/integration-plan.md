@@ -3,7 +3,7 @@
 Pre-Task (blocking): Update GUARDRAILS in `AGENTS.md` (tool allowlist/denylist, escalation ceilings, redaction rules, budget caps) before enabling Tier 1 defaults.
 
 ## Milestone 1: Tier 1 registry + compose wiring
-Acceptance: registry.yaml lists all Tier 1 tools enabled with mounts/env matching compose; orchestrator depends on tier1 services with healthchecks. Kill-switch: revert to orchestrator-only compose and disable Tier 1 entries.
+Acceptance: `docs/mcp/registry.yaml` lists all Tier 1 tools enabled with mounts/env matching compose; orchestrator depends on Tier 1 services with healthchecks. Kill-switch: revert to orchestrator-only compose and disable Tier 1 entries.
 
 ## Milestone 2: Sandbox enforcement
 Acceptance: py/node slim/full profiles applied per registry sandbox; read-only mounts enforced where possible; E2B/Docker exec pinned to /workdir. Kill-switch: disable sandbox services and switch to mock adapters.
