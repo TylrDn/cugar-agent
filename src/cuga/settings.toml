@@ -53,3 +53,27 @@ graph_visualization = 8080
 orchestrate_url = 4321
 trm_url = 8080
 memory = 8888
+
+[llm]
+provider = "openai"
+model = "gpt-4o-mini"
+base_url = ""
+api_key = ""
+timeout_s = 60
+max_retries = 3
+
+[llm.primary]
+provider = "openai"
+base_url = "http://localhost:11434"
+model = "mistral"
+api_key = ""
+
+[llm.fallback]
+provider = "openai"
+model = "gpt-4o-mini"
+api_key = "${OPENAI_API_KEY}"
+
+[llm.policy]
+fallback_on_timeout = true
+fallback_on_context_overflow = true
+fallback_on_budget_exceeded = false
