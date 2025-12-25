@@ -63,3 +63,6 @@ cuga.egg-info
 .cursor/
 .env.local
 .env.secrets
+.coverage
+htmlcov
+/.pytest_cache

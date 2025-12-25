@@ -1,16 +1,19 @@
 # Security Policy
 
-CUGA is designed for sandboxed experimentation. The examples and demo settings are not production hardened. Please keep secrets and customer data out of the repository and demo flows.
+CUGAR Agent is sandbox-first. Examples and demos are not production hardened; keep secrets and customer data out of the repository and demos.
 
 ## Reporting a Vulnerability
 - Email: [security@cuga.dev](mailto:security@cuga.dev)
-- Please include a detailed description, reproduction steps, and any logs available.
-- Avoid sharing secrets or customer data in reports. If sensitive artifacts are required, request a secure channel in your first message.
+- Include repro steps, impact, affected version/commit, and any mitigations you tested.
+- Do not include credentials or PII. If sensitive artifacts are required, request a secure channel first.
+- We aim to acknowledge reports within 72 hours and provide a fix or mitigation timeline within 7 business days.
 
 ## Supported Versions
-Security fixes target the `main` branch. Release tags receive fixes on a best-effort basis. If you rely on a previous release, please mention the tag in your report so we can triage impact.
+- Active development targets `main`.
+- Released tags receive fixes on a best-effort basis; note the tag in your report so we can triage impact.
 
 ## Safe Handling Guidelines
-- Run agents and MCP servers in sandboxed environments with locked-down network access whenever possible.
-- Rotate API keys frequently and configure them through environment variables or `.env.mcp`, never hard-code secrets.
-- Use the guardrail verification script (`python scripts/verify_guardrails.py`) to confirm routing markers and registry hygiene before shipping changes.
+- Run agents/MCP servers in sandboxed environments with locked-down network egress by default.
+- Configure secrets through environment variables or `.env.mcp`, never in code or committed files.
+- Use `python scripts/verify_guardrails.py` and CI workflows to validate routing markers, registry hygiene, and audit/trace settings before shipping.
+- Enable observability with redaction when using Langfuse/OpenInference; avoid exporting raw prompts containing sensitive data.

@@ -1,0 +1,14 @@
+profile: demo_power
+model:
+  provider: openai
+  model: gpt-4o-mini
+  temperature: 0.3
+planner:
+  strategy: react
+  max_steps: 6
+  allow_self_reflection: true
+executor:
+  default_tool: echo
+observability:
+  langfuse: true
+  openinference: false

@@ -96,3 +96,19 @@ This directory inherits from root `AGENTS.md` (canonical). Conflicts resolve to 
 - **Profile**: configuration bundle describing allowed tools and registries for a goal.
 - **Registry fragment**: structured document merged into a profile-scoped registry.
 - These guardrails constrain repository behavior only; they are not a full security model for production deployments.
+
+---
+
+## Agent Role Overview (Repository Map)
+The following roles are implemented for the modular stack while preserving the guardrails above.
+
+- **Planner** (`src/cuga/modular/agents.py`): builds ReAct/Plan-and-Execute step lists, emits deterministic traces, and honors profile-scoped registry snapshots.
+- **Worker/Tool User** (`src/cuga/modular/agents.py`): executes planner steps via `ToolRegistry`, propagating correlation IDs and policy decisions.
+- **Coordinator** (`examples/multi_agent_dispatch.py`): orchestrates multiple workers and planners in CrewAI/AutoGen style while keeping memory profile-local.
+- **RAG/Data Agent** (`src/cuga/modular/rag.py`): wraps LlamaIndex loaders/retrievers, namespaced by profile and vector backend.
+- **Observer** (`src/cuga/modular/observability.py`): handles Langfuse/OpenInference emission with redaction and sampling options.
+
+All new agents must:
+- Keep state under the active profile sandbox.
+- Emit audit traces for plan creation, tool selection, and execution results.
+- Avoid cross-profile cache reuse unless explicitly allowed in configuration.

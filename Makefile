@@ -1,4 +1,4 @@
-.PHONY: profile-demo_power env-dev test docs check-docs
+.PHONY: profile-demo_power env-dev test docs check-docs lint typecheck format coverage
 
 profile-demo_power:
 	uv run python ./mcp-foundation/scripts/merge_registry.py --profile demo_power
@@ -10,7 +10,22 @@ env-dev:
 		echo "Wrote .env.mcp (source with: set -a; source .env.mcp; set +a)"
 
 test:
-	uv run pytest -q
+        uv run pytest -q
+
+coverage:
+        uv run pytest --cov=cuga --cov-report=term-missing
+
+lint:
+        uv run ruff check .
+        uv run black --check .
+        uv run isort --check-only .
+
+format:
+        uv run black .
+        uv run isort .
+
+typecheck:
+        uv run mypy src
 
 mcp-mocks:
 	uv run python -m tests.mcp.mock_server

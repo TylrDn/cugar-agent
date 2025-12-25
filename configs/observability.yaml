@@ -1,0 +1,7 @@
+langfuse:
+  enabled: true
+  sampling_rate: 1.0
+  redact: true
+openinference:
+  enabled: ${OPENINFERENCE_ENABLED:-false}
+  sampling_rate: 0.3
