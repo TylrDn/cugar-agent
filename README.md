@@ -6,6 +6,7 @@
 [![Coverage](https://img.shields.io/badge/coverage-pytest--cov-success)](./TESTING.md)
 
 CUGAR Agent is a production-grade, modular agent stack that embraces 2025’s best practices for LangGraph/LangChain orchestration, LlamaIndex-powered RAG, CrewAI/AutoGen-style multi-agent patterns, and modern observability (Langfuse/OpenInference/Traceloop). The repository is optimized for rapid setup, reproducible demos, and safe extension into enterprise environments.
+Policy and change-management guardrails are maintained in [AGENTS.md](AGENTS.md) and must be reviewed before modifying agents or tools.
 
 ## At a Glance
 - **Composable agent graph**: Planner → Tool/User executor → Memory+Observability hooks, wired for LangGraph.
