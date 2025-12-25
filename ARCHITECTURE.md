@@ -13,3 +13,5 @@
 ## Tooling & CLI
 - ToolRegistry restricts dynamic imports to `cuga.modular.tools.*`.
 - CLI (`python -m cuga.modular.cli`) provides `ingest`, `query`, `plan` with JSON logs and shared state file for demos.
+
+For a mode-aware, controller → planner → executor narrative (including MCP pack assembly and configuration keys), see [docs/agents/architecture.md](docs/agents/architecture.md).
