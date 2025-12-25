@@ -1,18 +1,18 @@
 # ADR 0005: Interfaces-first registry-driven integrations
 
 ## Status
-Proposed
+Accepted
 
 ## Context
-CUGA now integrates MCP and external tools via registry-driven orchestration. Root guardrails require deterministic registry merges and sandbox isolation.​:codex-file-citation[codex-file-citation]{line_range_start=17 line_range_end=42 path=AGENTS.md git_url="https://github.com/TylrDn/cugar-agent/blob/main/AGENTS.md#L17-L42"}​​:codex-file-citation[codex-file-citation]{line_range_start=15 line_range_end=124 path=docs/MCP_INTEGRATION.md git_url="https://github.com/TylrDn/cugar-agent/blob/main/docs/MCP_INTEGRATION.md#L15-L124"}​
+CUGAR coordinates MCP tools through Langflow + ALTK as the orchestration control plane. Root guardrails mandate profile isolation, deterministic registry merges, and explicit sandboxing.
 
 ## Decision
-- Core communicates through small interfaces (ToolBus, StateStore, VectorIndex, TraceSink, SecretStore, ProfileRegistry). No vendor-specific calls in core.
-- docs/mcp/registry.yaml is the single source of truth for tool availability, tiers, sandboxes, and env hooks.
-- Tier 1 integrations are enabled by default; Tier 2 integrations remain opt-in via compose profiles and registry flags.
-- Observability/budget controls live in env-driven settings (see docs/observability/config.md).
+- Core contracts are limited to ToolBus, StateStore, VectorIndex, TraceSink, SecretStore, and ProfileRegistry; vendor SDKs stay out of core.
+- `docs/mcp/registry.yaml` is the single source of truth for tool availability, tiers, sandboxes, env hooks, and mounts; doc tables are generated from it.
+- Tier 1 integrations default to enabled; Tier 2 entries remain opt-in behind compose profiles and registry `enabled: false` flags.
+- Observability and budget controls are driven by environment (`docs/observability/config.md`) and applied at orchestration/runtime boundaries.
 
 ## Consequences
-- Adding a tool requires implementing an adapter behind interfaces and a registry entry; core code remains unchanged.
-- Operators can hot-swap tools by editing registry.yaml and reloading without code changes.
-- Profiles remain isolated; sandboxes and mounts are explicit and least-privilege.
+- Adding or swapping a tool only requires registry edits and an adapter bound to the interfaces; core code remains unchanged.
+- Compose wiring and sandbox profiles mirror registry hints, enabling hot-swap and least-privilege mounts.
+- Failing guardrails (profiles, budgets, trace redaction) block Tier 1 rollout until addressed in `AGENTS.md` and the registry.
