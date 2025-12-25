@@ -1,114 +1,66 @@
-# 🧭 Root Guardrails (Canonical)
+# AGENTS.md (Single Source of Truth)
 
-This root `AGENTS.md` is the **canonical authority** for the entire repository. All directories inherit these guardrails by default; any local `AGENTS.md` may only add stricter rules. If a local rule conflicts with this file, **this file wins**. Escalate unresolved conflicts to the codeowners or the security reviewer before merging.
+> This directory inherits from root `AGENTS.md` (canonical). Conflicts resolve to root.
 
----
+## Framework Governance
+- This file **and** `scripts/guardrails_check.py` form the code-as-policy framework that encodes safety and planning guardrails.
+- Purpose: keep agents deterministic/offline, security-first, and auditable via a single normative source plus automated verifier.
+- Maintenance: proposals MUST land via PRs modifying this file **and** the checker/tests in the same change; changelog entry required.
+- Evolution: changes SHOULD include rationale, backwards-compatibility notes, and migration guidance to keep the guardrails scalable over time.
 
-## Quick editing checklist
-This checklist is the single source of truth for routing-related updates; follow the referenced paths when making changes.
-| When you change… | Also update… |
-| --- | --- |
-| Guardrails | `CHANGELOG.md` (`## vNext`), `.github/workflows/guardrails.yml`, affected `AGENTS.md` files |
-| Tool registry semantics | `docs/registry*.md`, `scripts/verify_guardrails.py`, `AGENTS.md` |
-| Audit/trace behavior | `docs/audit_and_trace.md`, `SECURITY.md`, `.github/workflows/stability-tests.yml` (artifact retention) |
-| Profiles | `docs/profiles.md`, profile manifests, `AGENTS.md` |
-| CI or safety policy | `docs/tool_safety.md`, `SECURITY.md`, `CHANGELOG.md`, `.github/workflows/ci.yml` (and related CI workflows) |
+## Design Tenets
+- MUST run deterministically offline; avoid network after setup; mock/record external calls.
+- MUST prioritize security-first designs: least privilege, sanitized inputs, no `eval`/`exec`.
+- SHOULD expose small, typed interfaces with explicit error handling and logging.
+- MUST keep memory/profile data isolated per profile; no cross-profile leakage.
 
-## 1. Scope & Precedence
-**Purpose:** keep one source of truth and avoid conflicting guardrails.
+## Agent Roles & Interfaces
+- PlannerAgent: input `(goal: str, metadata: dict)` → `AgentPlan` with ordered steps; MUST propagate `trace_id`.
+- WorkerAgent: input `(steps, metadata)` → executes tools; MUST default profile to `memory.profile` when missing.
+- CoordinatorAgent: orchestrates Planner + Workers; MUST preserve `trace_id` and plan trace ordering.
+- All agents MUST accept/emit structured traces (dicts) carrying `trace_id`, step index, and profile.
 
-- Root guardrails apply to every profile, tool, workflow, and document in this repo.
-- Local `AGENTS.md` files must start with: `This directory inherits from root \`AGENTS.md\` (canonical). Conflicts resolve to root.`
-- Conflict resolution order: **root → nearest directory AGENTS.md → implicit inherit markers**.
-- If a rule is ambiguous, pause the change, document the ambiguity in the PR, and request a maintainer review.
+## Planning Protocol
+- Use ReAct/Plan-and-Execute hybrid: observe → reason → act; stop when goal met, max steps reached, or tool failure.
+- Planner MUST select goal-relevant tools (never blindly all tools); rank by description/name similarity.
+- Max steps derived from config/env, clamped to 1..50; temperature bounded 0..2 for stochastic steps.
+- MUST record plan start/finish, selected tools, and stop condition in trace.
 
-### Template for local `AGENTS.md`
-```
-This directory inherits from root `AGENTS.md` (canonical). Conflicts resolve to root.
+## Tool Contract
+- Tool handler signature: `(inputs: Dict[str, Any], context: Dict[str, Any]) -> Any`; context includes `profile`, `trace_id`.
+- Dynamic imports MUST be restricted to `cuga.modular.tools.*`; reject relative/absolute paths outside this namespace.
+- Tools MUST declare parameters/IO expectations; MUST NOT perform network I/O unless explicitly allowed by profile.
+- Forbidden: `eval`/`exec`, writing outside sandbox, spawning daemons, or swallowing errors silently.
 
-# Local Guardrails (Stricter)
-- Add only deltas that tighten requirements for this subtree.
-```
+## Memory & RAG
+- Vector backends implement `VectorBackend` protocol (`connect`, `upsert`, `search` returning scored hits).
+- Default embedder MUST be deterministic/offline (hashing/TF-IDF style). No remote embeddings.
+- Metadata MUST include `path` (for ingested files) and `profile`; scoring semantics documented in retriever.
+- RAG loader MUST validate backend at init; ingest MUST persist profile in metadata; search MUST return scores.
+- Local fallback search MUST use whole-word matching with deterministic ranking.
 
-## 2. Profile Isolation
-**Purpose:** prevent state or data from leaking across profiles.
+## Coordinator Policy
+- MUST use round-robin worker selection with thread-safety guarantees (lock-protected index increment).
+- MUST ensure fairness across workers; preserve step ordering and trace aggregation.
 
-- Treat each profile as a hard boundary: tools, caches, and runtime state **must not** cross between profiles.
-- Disable or re-scope any shared handles that could leak state (file handles, sockets, process-wide caches).
-- Profile-local memory: keep replay buffers, traces, and registries scoped by profile ID.
-- No cross-profile filesystem writes or reads unless explicitly whitelisted and documented.
-- Review checklist before merging:
-  - [ ] Do tools run only with their profile-scoped registry?
-  - [ ] Are in-memory caches keyed by profile and cleared on teardown?
-  - [ ] Are profile artefacts written to sandbox-specific paths?
+## Configuration Policy
+- Env parsing MUST be robust with defaults/fallbacks; clamp `PLANNER_MAX_STEPS` to 1..50 and `MODEL_TEMPERATURE` to 0..2.
+- SHOULD emit warnings when env values are invalid and fall back to defaults.
+- Config changes MUST update tests and docs in the same PR.
 
-## 3. Registry Hygiene
-**Purpose:** ensure deterministic registry merges and prevent collisions.
+## Observability & Tracing
+- Logs MUST be structured (JSON-friendly) and omit PII; redact secrets before emission.
+- `trace_id` MUST propagate across planner/worker/coordinator, CLI, and tools.
+- Emit events for plan creation, tool selection, execution start/stop, backend connections, and errors.
 
-- Registry fragments must be deep-copied before merge; callers must never see shared references.
-- Merge order is deterministic: profile base → ordered fragments → overrides; later entries win only after conflict validation.
-- Name/version rules: use `<domain>.<capability>.<variant>:<semver>` to avoid collisions; bump on any breaking registry change.
-- Conflicts fail fast with explicit file + key references; never silently overwrite.
-- Ownership: registry format and merge semantics require approval from a registry maintainer.
-- Reference docs: `docs/registry*.md` and `scripts/verify_guardrails.py`.
+## Testing Invariants
+- Tests MUST assert planner does not return all tools blindly; vector scores correlate with similarity and are ordered.
+- Import guardrails MUST be enforced (reject non-`cuga.modular.tools.*`).
+- Round-robin coordinator scheduling MUST be verified under concurrent calls.
+- Env parsing tests MUST cover invalid/edge values and fallback behavior.
+- AGENTS.md anchors (these sections) MUST be validated by guardrail tests.
 
-## 4. Sandbox Expectations
-**Purpose:** keep execution contained and resource-bound.
-
-- Sandboxed execution means: filesystem writes confined to the run directory, no implicit network access, and bounded resources (respect CI/container limits).
-- Prohibited: background daemons, long-lived listeners, cross-profile IPC, and caching outside the sandbox.
-- If a task needs expanded permissions, document the justification in the PR and add a temporary guard with TODO + owner.
-- Assume non-production posture: remind users when examples or demos lack production hardening.
-
-## 5. Audit / Trace Semantics
-**Purpose:** provide traceability without leaking secrets.
-
-- Emit trace events for: plan creation, tool selection, tool invocation start/stop, registry merge results, and sanitization steps.
-- Preserve ordering within a correlation ID; include monotonic timestamps and step indexes.
-- Correlation IDs: generate per user request or job; propagate through controller → planner → executor.
-- Redact secrets, tokens, and PII at emission time. Do not write raw secrets to logs or exports.
-- Storage/export: keep traces local to the sandbox by default; if exporting, document retention, scope, and redaction.
-- Reference docs: `docs/audit_and_trace.md`, `SECURITY.md`.
-
-## 6. Documentation Update Rules
-**Purpose:** keep policy changes discoverable and synchronized.
-
-- **No undocumented behavior changes.** Every behavior, guardrail, audit, CI, or safety change must update `CHANGELOG.md` under `## vNext`.
-- Commit messages: prefer `[vX.Y.Z] {CHANGE_TYPE}: {SUMMARY}` for traceability.
-- PR checklist (must appear in description):
-  - [ ] Updated relevant AGENTS.md files and routing markers
-  - [ ] Updated CHANGELOG.md `vNext`
-  - [ ] Added/updated tests for guardrails or safety-sensitive code
-  - [ ] Confirmed audit/trace redaction where applicable
-
-## 7. Verification & No Conflicting Guardrails
-**Purpose:** ensure automated enforcement and prevent split-brain policies.
-
-- Run `python scripts/verify_guardrails.py` (optionally `--base <git-ref>`) before committing.
-- CI enforces these checks via `.github/workflows/guardrails.yml` and blocks merges on failures.
-- No file other than this root document may claim to be canonical. Local `AGENTS.md` files may only declare inheritance and stricter deltas.
-- If the checker or CI flags a gap, fix the guardrail or the routing marker before merge.
-
----
-
-## Definitions & Limits
-- **Sandbox**: ephemeral workspace with constrained resources and no implicit network access after setup.
-- **Profile**: configuration bundle describing allowed tools and registries for a goal.
-- **Registry fragment**: structured document merged into a profile-scoped registry.
-- These guardrails constrain repository behavior only; they are not a full security model for production deployments.
-
----
-
-## Agent Role Overview (Repository Map)
-The following roles are implemented for the modular stack while preserving the guardrails above.
-
-- **Planner** (`src/cuga/modular/agents.py`): builds ReAct/Plan-and-Execute step lists, emits deterministic traces, and honors profile-scoped registry snapshots.
-- **Worker/Tool User** (`src/cuga/modular/agents.py`): executes planner steps via `ToolRegistry`, propagating correlation IDs and policy decisions.
-- **Coordinator** (`examples/multi_agent_dispatch.py`): orchestrates multiple workers and planners in CrewAI/AutoGen style while keeping memory profile-local.
-- **RAG/Data Agent** (`src/cuga/modular/rag.py`): wraps LlamaIndex loaders/retrievers, namespaced by profile and vector backend.
-- **Observer** (`src/cuga/modular/observability.py`): handles Langfuse/OpenInference emission with redaction and sampling options.
-
-All new agents must:
-- Keep state under the active profile sandbox.
-- Emit audit traces for plan creation, tool selection, and execution results.
-- Avoid cross-profile cache reuse unless explicitly allowed in configuration.
+## Change Management
+- Edit `AGENTS.md` first when modifying guardrails; update `CHANGELOG.md` (`## vNext`) with summary.
+- Any change violating or adjusting guardrails MUST update this file plus corresponding tests in the same PR.
+- PRs MUST include tests, docs, and observability updates for affected areas.
