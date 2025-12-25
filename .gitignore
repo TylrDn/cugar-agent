@@ -9,13 +9,17 @@ node_modules
 /frontend/dist/
 !frontend-workspaces/frontend/dist
 /frontend/node_modules/
+
+# Python build artifacts
+/build/
+/dist/
+*.egg-info/
 experiment_results_*
 output_graphs
 docs/examples/demo_apps/email_mcp/mail_sink/buil
-*.egg-info/
 docs/examples/demo_apps/email_mcp/mail_sink/build
 docs/examples/demo_apps/email_mcp/mcp_server/build
-docs/examples/demo_apps/setup/build
+docs/examples/demo_apps/setup/build/
 backup_*
 vendor
 logs/
@@ -47,7 +51,6 @@ modes.custom.toml
 experiments/outputs
 /evaluation/data/tasks/
 /evaluation/data/
-/build/
 docs/examples/demo_apps/email_mcp/mcp_mail
 
 # Local dependencies
