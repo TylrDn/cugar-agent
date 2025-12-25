@@ -6,6 +6,16 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Dict
 
+from .audit import (
+    AUDIT_EVENT_CONTROLLER_RUN,
+    AUDIT_FIELD_EVENT,
+    AUDIT_FIELD_GOAL,
+    AUDIT_FIELD_POLICY,
+    AUDIT_FIELD_PROFILE,
+    AUDIT_POLICY_ALLOW,
+    AUDIT_LOGGER_NAME,
+    sanitize_for_audit,
+)
 from .executor import ExecutionContext, ExecutionResult, Executor
 from .planner import Planner, PlanningPreferences
 from .registry import ToolRegistry
@@ -17,7 +27,7 @@ class Controller:
     executor: Executor
     registry: ToolRegistry
 
-    audit_logger = logging.getLogger("cuga.audit")
+    audit_logger = logging.getLogger(AUDIT_LOGGER_NAME)
 
     def run(
         self,
@@ -28,10 +38,10 @@ class Controller:
         preferences: PlanningPreferences | None = None,
     ) -> ExecutionResult:
         audit_entry = {
-            "event": "controller.run",
-            "profile": profile,
-            "goal": goal,
-            "policy": "allow",
+            AUDIT_FIELD_EVENT: AUDIT_EVENT_CONTROLLER_RUN,
+            AUDIT_FIELD_PROFILE: sanitize_for_audit(profile),
+            AUDIT_FIELD_GOAL: sanitize_for_audit(goal),
+            AUDIT_FIELD_POLICY: AUDIT_POLICY_ALLOW,
         }
         audit_message = f"[audit] {audit_entry}"
         self.audit_logger.info(audit_message)

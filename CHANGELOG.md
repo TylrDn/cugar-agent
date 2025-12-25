@@ -66,6 +66,6 @@ All notable changes to the CUGAR Agent project will be documented in this file.
 - ➕ Added: CLI for listing agents, running goals, and exporting structured results
 - ➕ Added: External tool plugin system with discovery helpers and a template plugin example
 - 🔁 Changed: Planner now builds multi-step plans with cost/latency optimization, logging, and trace outputs
-- 🔁 Changed: Controller and executor emit structured audit logs with failure-safe responses for tool execution
+- 🔁 Changed: Controller and executor emit structured audit logs with fail-safe responses for tool execution
 
 ---
