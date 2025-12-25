@@ -18,6 +18,7 @@ from rich.table import Table
 from rich.text import Text
 
 from cuga.config import PACKAGE_ROOT, TRAJECTORY_DATA_DIR, get_user_data_path, settings
+from cuga.llm import get_llm_client
 from cuga.configurations.instructions_manager import InstructionsManager
 
 instructions_manager = InstructionsManager()
@@ -548,6 +549,12 @@ def start(
       cuga start appworld            # Start AppWorld servers
       cuga start memory              # Start memory service
     """
+    client = get_llm_client()
+    base_url = getattr(client, "base_url", "")
+    mode = "Hybrid" if hasattr(client, "fallback") else ("Local" if not getattr(client, "api_key", None) else "Hosted")
+    logger.info(
+        f"LLM client ready mode={mode} model={getattr(client, 'model', 'unknown')} base_url={base_url or 'default'}"
+    )
     validate_service(service)
 
     # Handle direct execution services (demo and registry)

@@ -17,6 +17,7 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 - ➕ Added: CLI for listing agents, running goals, and exporting structured results
 - ➕ Added: External tool plugin system with discovery helpers and a template plugin example
 - ➕ Added: Expanded guardrail verification script (`scripts/verify_guardrails.py`), inheritance markers, and CI enforcement
+- ➕ Added: Dual-mode LLM adapter layer with hybrid routing, budget guardrails, and config/env precedence
 - ➕ Added: Architecture/registry observability documentation set (overview, registry, tiers, sandboxes, compose, ADR, glossary)
 
 ### Changed

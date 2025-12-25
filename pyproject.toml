@@ -103,6 +103,7 @@ dev = [
     "rapidfuzz",
     "pytest>=8.3.5",
     "pytest-asyncio>=1.1.0",
+    "respx>=0.21.1",
     "cugaviz",
     "langchain-groq>=0.3.8",
     "pre-commit>=4.3.0",

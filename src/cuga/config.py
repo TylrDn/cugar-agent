@@ -1,4 +1,5 @@
 import os
+import re
 
 # stdlib
 from importlib import import_module
@@ -11,6 +12,8 @@ import dynaconf
 from dotenv import find_dotenv, load_dotenv
 from dynaconf import Dynaconf, Validator
 from loguru import logger
+from pydantic import BaseModel, Field, field_validator
+import tomllib
 
 # ---------------------------------------------------------------------------
 # Package root & path helper (must be defined BEFORE first use)
@@ -263,3 +266,62 @@ def get_app_name_from_url(curr_url):
 
 if __name__ == "__main__":
     model = settings.agent.task_decomposition.model
+
+
+class LLMNode(BaseModel):
+    provider: str = Field(default="openai")
+    model: str = Field(default="gpt-4o-mini")
+    base_url: str = Field(default="")
+    api_key: str = Field(default="")
+    timeout_s: int = Field(default=60)
+    max_retries: int = Field(default=3)
+
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def expand_env(cls, value: str) -> str:
+        if isinstance(value, str):
+            return os.path.expandvars(value)
+        return value
+
+
+class LLMSettings(LLMNode):
+    primary: LLMNode | None = None
+    fallback: LLMNode | None = None
+    policy: dict | None = None
+
+
+def _expand_env_placeholders(raw: dict, env: dict) -> dict:
+    expanded = {}
+    pattern = re.compile(r"\$\{([^}]+)\}")
+    for key, value in raw.items():
+        if isinstance(value, str):
+            expanded[key] = pattern.sub(lambda match: env.get(match.group(1), ""), value)
+        elif isinstance(value, dict):
+            expanded[key] = _expand_env_placeholders(value, env)
+        else:
+            expanded[key] = value
+    return expanded
+
+
+def load_llm_settings(env: dict | None = None) -> LLMSettings:
+    incoming_env = env or {}
+    settings_path = Path(SETTINGS_TOML_PATH)
+    orchestrator_env = settings_path.parent.parent / "ops" / "env" / "orchestrator.env"
+    load_dotenv(settings_path.parent.parent / ".env", override=False)
+    load_dotenv(orchestrator_env, override=True)
+    env = {**os.environ, **incoming_env}
+    with settings_path.open("rb") as handle:
+        raw = tomllib.load(handle)
+    llm_block = _expand_env_placeholders(raw.get("llm", {}), env)
+    primary = llm_block.get("primary")
+    fallback = llm_block.get("fallback")
+    policy = llm_block.get("policy")
+    base = {k: v for k, v in llm_block.items() if k not in {"primary", "fallback", "policy"}}
+    settings = LLMSettings(**base)
+    if primary:
+        settings.primary = LLMNode(**primary)
+    if fallback:
+        settings.fallback = LLMNode(**fallback)
+    if policy:
+        settings.policy = policy
+    return settings

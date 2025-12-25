@@ -28,6 +28,7 @@ services:
       # OTEL_EXPORTER_OTLP_HEADERS: ""
     volumes:
       - ./docs/mcp/registry.yaml:/app/registry.yaml:ro
+      - ./src/cuga/settings.toml:/app/settings.toml:ro
       - ./workspace/output:/app/output:rw
     depends_on:
       - mcp.e2b
@@ -35,6 +36,7 @@ services:
       - ${WEB_SERVICE:-mcp.web-slim}
       - mcp.vcs
       - mcp.gitingest
+      - ollama
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -128,3 +130,21 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
       interval: 60s
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local-llm"]
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  ollama-models:
