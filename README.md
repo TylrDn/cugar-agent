@@ -1,12 +1,8 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="/docs/images/cuga-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="/docs/images/cuga-light.png">
-  <img alt="CUGA" src="/docs/images/cuga-dark.png">
-</picture>
+![CUGAr](docs/images/CUGAr.png)
 
 <div align="center">
 
-# CUGA: The Configurable Generalist Agent
+# CUGAr: The Configurable Generalist Agent
 
 ### Start with a generalist. Customize for your domain. Deploy faster!
 
@@ -27,7 +23,7 @@ Building a domain-specific enterprise agent from scratch is complex and requires
 </div>
 
 
-## Why CUGA?
+## Why CUGAr?
 
 ### 🏆 Benchmark Performance
 
