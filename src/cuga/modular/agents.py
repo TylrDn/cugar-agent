@@ -117,9 +117,9 @@ class CoordinatorAgent:
         return AgentResult(output=result.output, trace=traces)
 
     def _select_worker(self) -> WorkerAgent:
-        if not self.workers:
-            raise ValueError("No workers available to select from.")
         with self._lock:
+            if not self.workers:
+                raise ValueError("No workers available to select from.")
             worker = self.workers[self._next_worker_idx]
             self._next_worker_idx = (self._next_worker_idx + 1) % len(self.workers)
         return worker
