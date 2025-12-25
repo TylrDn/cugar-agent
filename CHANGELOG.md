@@ -8,6 +8,10 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 ## vNext
 
 ### Added
+- ➕ Added: Deterministic hashing embedder and pluggable vector backends with local search fallback.
+- ➕ Added: Secure modular CLI for ingest/query/plan with trace propagation and JSON logs.
+- ➕ Added: Guardrail checker and AGENTS.md SSOT for modular stack.
+- ➕ Added: Governance process clarifying AGENTS.md purpose, maintenance, and evolution alongside the checker script.
 - ➕ Added: Modular `cuga.modular` package with planner/worker/tool/memory/observability scaffolding ready for LangGraph/LangChain
 - ➕ Added: Vector memory abstraction with in-memory fallback and optional Chroma/Qdrant/Weaviate/Milvus connectors
 - ➕ Added: LlamaIndex RAG loader/retriever utilities and Langfuse/OpenInference observability hooks
@@ -29,6 +33,8 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 - ➕ Added: MCP v2 registry slice with immutable snapshot models, YAML loader, and offline contract tests
 
 ### Changed
+- 🔁 Changed: Planner, coordinator, worker, and RAG pipelines to enforce profile/trace propagation and round-robin fairness.
+- 🔁 Changed: Dynamic tool imports hardened to `cuga.modular.tools.*` namespace with explicit errors.
 - 🔁 Changed: Centralized MCP server utilities for payload handling and sandbox lookup
 - 🔁 Changed: Planner now builds multi-step plans with cost/latency optimization, logging, and trace outputs
 - 🔁 Changed: Controller and executor now emit structured audit traces and sanitize handler failures
@@ -68,6 +74,7 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 - 📚 Documented: Usage and testing quick-start guides plus repository Code of Conduct and security policy
 
 ### Testing
+- 🧪 Added: Unit tests for vector search scoring, planning relevance, round-robin dispatch, env parsing, and CLI flow.
 - 🧪 Added: Expanded `scrape_tweets` test coverage for limits, dependencies, and health checks
 - 🧪 Added: Offline MCP registry, runner, and planner/executor tests backed by FastAPI mock servers
 - 🧪 Added: Dedicated lint workflow running Ruff and guardrail verification on pushes and pull requests
