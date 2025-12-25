@@ -43,6 +43,7 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 ### Documentation
 - 📚 Documented: Branch cleanup workflow and issue stubs for consolidating Codex branches
 - 📚 Documented: Root guardrails, audit expectations, and routing table for guardrail updates
+- 📚 Documented: Refined canonical `AGENTS.md` with quick checklist, local template, and cross-links to policy docs
 
 ### Testing
 - 🧪 Added: Expanded `scrape_tweets` test coverage for limits, dependencies, and health checks
