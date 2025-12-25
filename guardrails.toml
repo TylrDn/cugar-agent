@@ -1,0 +1,16 @@
+[guardrails]
+allowlisted_dirs = ["configurations", "docs", "src", ".github", "scripts", "examples"]
+inherit_marker = "Root guardrails apply as-is; no directory-specific overrides."
+required_sections = [
+  "## 1. Scope & Precedence",
+  "## 2. Profile Isolation",
+  "## 3. Registry Hygiene",
+  "## 4. Sandbox Expectations",
+  "## 5. Audit / Trace Semantics",
+  "## 6. Documentation Update Rules",
+  "## 7. Verification & No Conflicting Guardrails",
+]
+canonical_inherit_phrase = "This directory inherits from root `AGENTS.md` (canonical). Conflicts resolve to root."
+vnext_keywords = ["guardrail", "audit", "registry", "ci", "safety"]
+
+guarded_path_prefixes = ["AGENTS.md", "docs/", ".github/", "scripts/", "configurations/"]

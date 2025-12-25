@@ -25,6 +25,7 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 - 🔁 Changed: Tool registry now deep-copies resolved entries and profile snapshots to prevent caller mutations from leaking between tools
 - 🔁 Changed: Reconciled agent lifecycle, tooling, and security documentation with current code enforcement boundaries
 - 🔁 Changed: Guardrail routing updated so root `AGENTS.md` remains canonical with per-directory inherit markers
+- 🔁 Hardened guardrail verification with config-driven defaults, strict git error handling, and improved vNext parsing
 
 ### Fixed
 - 🐞 Fixed: Hardened `crypto_wallet` parameter parsing and clarified non-production security posture
