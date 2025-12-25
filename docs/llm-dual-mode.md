@@ -8,3 +8,4 @@ Provider-agnostic adapter supports local, hosted, and hybrid routes without code
 - Reliability: `timeout_s`, `max_retries`; tracing hooks carry usage/cost fields. Default transport uses [LiteLLM](https://github.com/BerriAI/litellm) for routing/retries; set `CUGA_LLM_BACKEND=httpx` to force the lightweight built-in client when needed (e.g., offline tests).
 - Validation: local server reachable on `11434`, demo UI on `http://localhost:8005`, swapping `base_url` takes effect on reload.
 - Ops: `ops/docker-compose.proposed.yaml` adds optional `ollama` service (`local-llm` profile) and mounts `settings.toml` into the app container.
+

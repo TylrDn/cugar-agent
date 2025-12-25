@@ -29,7 +29,12 @@ class BudgetExceeded(Exception):
 class BudgetManager:
     _lock = threading.Lock()
 
-    def __init__(self, config: BudgetConfig, ledger_path: Path = DEFAULT_LEDGER, pricing: Optional[Dict[str, Dict[str, float]]] = None):
+    def __init__(
+        self,
+        config: BudgetConfig,
+        ledger_path: Path = DEFAULT_LEDGER,
+        pricing: Optional[Dict[str, Dict[str, float]]] = None,
+    ):
         self.config = config
         self.ledger_path = ledger_path
         self.pricing = pricing or DEFAULT_PRICING
@@ -46,10 +51,14 @@ class BudgetManager:
             json.dump(ledger, handle)
 
     def _estimate(self, usage: Usage, model: str, is_local: bool) -> Cost:
-        prices = self.pricing.get(model, {"input": 0, "output": 0}) if not is_local else {"input": 0, "output": 0}
+        prices = (
+            {"input": 0.0, "output": 0.0}
+            if is_local
+            else self.pricing.get(model, {"input": 0.0, "output": 0.0})
+        )
         return Cost(
-            input_cost=(usage.prompt_tokens / 1000) * prices.get("input", 0),
-            output_cost=(usage.completion_tokens / 1000) * prices.get("output", 0),
+            input_cost=(usage.prompt_tokens / 1000) * prices.get("input", 0.0),
+            output_cost=(usage.completion_tokens / 1000) * prices.get("output", 0.0),
         )
 
     def _check(self, incremental: float, today_total: float) -> None:
@@ -57,13 +66,18 @@ class BudgetManager:
             if self.config.enforce == "block":
                 raise BudgetExceeded("Per-run budget exceeded")
             logging.getLogger(__name__).warning(
-                "Per-run budget exceeded: %.3f > %.3f", incremental, self.config.run_budget_usd
+                "Per-run budget exceeded: %.3f > %.3f",
+                incremental,
+                self.config.run_budget_usd,
             )
+
         if self.config.daily_budget_usd and today_total > self.config.daily_budget_usd:
             if self.config.enforce == "block":
                 raise BudgetExceeded("Daily budget exceeded")
             logging.getLogger(__name__).warning(
-                "Daily budget exceeded: %.3f > %.3f", today_total, self.config.daily_budget_usd
+                "Daily budget exceeded: %.3f > %.3f",
+                today_total,
+                self.config.daily_budget_usd,
             )
 
     def record(self, usage: Usage, model: str, is_local: bool) -> Cost:
@@ -72,7 +86,9 @@ class BudgetManager:
             ledger = self._ledger()
             today_key = date.today().isoformat()
             current_total = ledger.get(today_key, 0.0)
+
             self._check(cost.total, current_total + cost.total)
+
             ledger[today_key] = current_total + cost.total
             self._persist(ledger)
             return cost
@@ -86,3 +102,4 @@ def budget_from_env(env: Dict[str, str]) -> BudgetConfig:
         daily_budget_usd=float(daily_budget) if daily_budget else None,
         enforce=env.get("AGENT_BUDGET_ENFORCE", "warn"),
     )
+

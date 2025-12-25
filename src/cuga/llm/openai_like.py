@@ -14,7 +14,16 @@ def azure_headers(api_key: Optional[str]) -> Dict[str, str]:
 
 
 class OpenAILikeClient(LLMClient):
-    def __init__(self, model: str, api_key: Optional[str] = None, base_url: str = "", timeout_s: float = 60, max_retries: int = 3, api_version: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
+    def __init__(
+        self,
+        model: str,
+        api_key: Optional[str] = None,
+        base_url: str = "",
+        timeout_s: float = 60,
+        max_retries: int = 3,
+        api_version: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         self.model = model
         self.api_key = api_key
         self.base_url = base_url or DEFAULT_BASE_URL
@@ -29,28 +38,51 @@ class OpenAILikeClient(LLMClient):
         if self.api_key:
             headers.setdefault("Authorization", f"Bearer {self.api_key}")
         params = {"api-version": self.api_version} if self.api_version else None
+
         last_exc: Optional[Exception] = None
         for attempt in range(self.max_retries + 1):
             try:
-                response = httpx.post(url, json=payload, headers=headers, params=params, timeout=self.timeout_s)
+                response = httpx.post(
+                    url,
+                    json=payload,
+                    headers=headers,
+                    params=params,
+                    timeout=self.timeout_s,
+                )
                 if response.status_code not in {502, 503, 504} or attempt == self.max_retries:
                     return response
                 last_exc = RuntimeError(f"Retryable status {response.status_code}")
             except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadTimeout) as exc:  # pragma: no cover
                 last_exc = exc
                 if attempt == self.max_retries:
-                    raise exc
+                    raise
             time.sleep(min(1.0, 0.1 * (2**attempt)))
+
         raise TimeoutError("LLM request failed after retries") from last_exc
 
     def chat(self, messages: Sequence[ChatMessage], **kwargs) -> ChatResponse:
-        payload = {"model": kwargs.get("model", self.model), "messages": [m.__dict__ for m in messages], "temperature": kwargs.get("temperature", 0)}
+        payload = {
+            "model": kwargs.get("model", self.model),
+            "messages": [m.__dict__ for m in messages],
+            "temperature": kwargs.get("temperature", 0),
+        }
         if kwargs.get("max_tokens") is not None:
             payload["max_tokens"] = kwargs["max_tokens"]
+
         response = self._post(payload)
         response.raise_for_status()
         data = response.json()
+
         usage_data = data.get("usage", {})
-        usage = Usage(prompt_tokens=usage_data.get("prompt_tokens", 0), completion_tokens=usage_data.get("completion_tokens", 0))
+        usage = Usage(
+            prompt_tokens=usage_data.get("prompt_tokens", 0),
+            completion_tokens=usage_data.get("completion_tokens", 0),
+        )
         content = data["choices"][0]["message"].get("content", "")
-        return ChatResponse(content=content, usage=usage, model=data.get("model", payload["model"]), raw=data)
+        return ChatResponse(
+            content=content,
+            usage=usage,
+            model=data.get("model", payload["model"]),
+            raw=data,
+        )
+

@@ -12,6 +12,7 @@ def _client_from_settings(settings: LLMSettings, env: dict):
     base_url = settings.base_url or env.get("AZURE_OPENAI_ENDPOINT", "")
     headers = azure_headers(settings.api_key) if env.get("AZURE_OPENAI_ENDPOINT") else None
     backend = env.get("CUGA_LLM_BACKEND", "litellm").lower()
+
     if backend == "litellm":
         try:
             from .litellm_client import LiteLLMClient
@@ -26,7 +27,9 @@ def _client_from_settings(settings: LLMSettings, env: dict):
                 headers=headers,
             )
         except ImportError:
-            backend = "httpx"
+            # Fall back to OpenAI-like client if LiteLLM is unavailable
+            pass
+
     return OpenAILikeClient(
         model=settings.model,
         api_key=settings.api_key or None,
@@ -42,6 +45,7 @@ def get_llm_client(env: Optional[dict] = None):
     env = env or os.environ
     llm_settings = load_llm_settings(env=env)
     budget = BudgetManager(budget_from_env(env))
+
     if llm_settings.fallback:
         policy_cfg = llm_settings.policy or {}
         policy = Policy(
@@ -52,7 +56,9 @@ def get_llm_client(env: Optional[dict] = None):
         primary = _client_from_settings(llm_settings.primary or llm_settings, env)
         fallback = _client_from_settings(llm_settings.fallback, env)
         return HybridLLMClient(primary, fallback, policy, budget)
+
     return _client_from_settings(llm_settings, env)
 
 
 __all__ = ["get_llm_client", "ChatMessage"]
+

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Sequence
+from typing import Sequence
 
 import httpx
 
@@ -29,7 +29,10 @@ class HybridLLMClient(LLMClient):
     def chat(self, messages: Sequence[ChatMessage], **kwargs) -> ChatResponse:
         try:
             primary_response = self.primary.chat(messages, **kwargs)
-            return self._record(primary_response, is_local=not self.primary.api_key)  # type: ignore[attr-defined]
+            return self._record(
+                primary_response,
+                is_local=not getattr(self.primary, "api_key", None),
+            )
         except httpx.TimeoutException:
             if not self.policy.fallback_on_timeout:
                 raise
@@ -48,3 +51,4 @@ class HybridLLMClient(LLMClient):
             return self._record(fallback_response, is_local=False)
         except Exception as exc:  # pragma: no cover
             raise RuntimeError("LLM fallback client also failed") from exc
+
