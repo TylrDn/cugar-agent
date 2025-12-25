@@ -121,7 +121,9 @@ def test_env_enabled_semantics(monkeypatch):
     env = {"FLAG": "1"}
     assert _env_enabled({"enabled": True, "enabled_env": "FLAG"}, env)
     assert _env_enabled({"enabled": False, "enabled_env": "FLAG"}, env)
-    assert not _env_enabled({"enabled": True, "enabled_env": "MISSING"}, env)
+    # When the environment key is absent, fall back to the config-enabled flag
+    assert _env_enabled({"enabled": True, "enabled_env": "MISSING"}, env)
+    assert not _env_enabled({"enabled": False, "enabled_env": "MISSING"}, env)
     assert _env_enabled({"enabled": True}, env)
 
 
