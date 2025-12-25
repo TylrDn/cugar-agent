@@ -17,3 +17,4 @@ CUGAR Agent is sandbox-first. Examples and demos are not production hardened; ke
 - Configure secrets through environment variables or `.env.mcp`, never in code or committed files.
 - Use `python scripts/verify_guardrails.py` and CI workflows to validate routing markers, registry hygiene, and audit/trace settings before shipping.
 - Enable observability with redaction when using Langfuse/OpenInference; avoid exporting raw prompts containing sensitive data.
+- Restrict dynamic imports to vetted namespaces (`cuga.modular.tools.*`) and ensure VectorMemory metadata carries `profile` for isolation.

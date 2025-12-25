@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
@@ -43,9 +44,18 @@ class ToolRegistry:
 
 
 def _load_handler(module_path: str) -> Handler:
+    if not module_path.startswith("cuga.modular.tools."):
+        raise ImportError("Dynamic imports are restricted to cuga.modular.tools.* namespace")
     module_name, _, attr = module_path.rpartition(".")
-    module = __import__(module_name, fromlist=[attr])
-    return getattr(module, attr)
+    if not module_name or not attr:
+        raise ImportError("module path must include attribute")
+    module = importlib.import_module(module_name)
+    if not hasattr(module, attr):
+        raise ImportError(f"{module_path} is missing attribute {attr}")
+    handler = getattr(module, attr)
+    if not callable(handler):
+        raise ImportError(f"{module_path} is not callable")
+    return handler
 
 
 def echo(inputs: Dict[str, Any], _: Dict[str, Any]) -> str:
