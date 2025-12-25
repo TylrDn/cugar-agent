@@ -2,40 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
-import os
 import secrets
-import sys
 from datetime import datetime
 from typing import Any, Dict, List
 
+from cuga.mcp_servers._shared import RequestError, get_sandbox, run_main
 
-class RequestError(Exception):
-    def __init__(self, message: str, *, type_: str = "bad_request", details: Dict[str, Any] | None = None) -> None:
-        super().__init__(message)
-        self.type = type_
-        self.details = details or {}
-
-
-def _get_sandbox() -> str:
-    sandbox = os.getenv("CUGA_PROFILE_SANDBOX")
-    if not sandbox:
-        raise RequestError("CUGA_PROFILE_SANDBOX is required for sandboxed execution", type_="missing_env")
-    return sandbox
-
-
-def _load_payload() -> Dict[str, Any]:
-    if "--json" in sys.argv:
-        try:
-            idx = sys.argv.index("--json") + 1
-            return json.loads(sys.argv[idx])
-        except Exception as exc:  # noqa: BLE001
-            raise RequestError("Invalid JSON payload", details={"error": str(exc)}) from exc
-    raw = sys.stdin.read().strip() or "{}"
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError as exc:  # pragma: no cover - defensive
-        raise RequestError("Invalid JSON payload", details={"error": str(exc)}) from exc
+# WARNING: This module is for testing/demonstration only and does not provide
+# production-grade cryptography, key storage, or wallet security. Do not use
+# real mnemonics or secrets generated here in any live environment.
 
 
 WORD_LIST = [
@@ -60,6 +35,7 @@ def _generate_mnemonic(count: int = 12, seed: int | None = None) -> str:
     if count not in (12, 24):
         raise RequestError("'word_count' must be 12 or 24", details={"field": "word_count"})
     if seed is not None:
+        # Deterministic derivation for tests only; not secure.
         hash_seed = hashlib.sha256(str(seed).encode("utf-8")).digest()
 
         def _seq() -> int:
@@ -92,13 +68,22 @@ def _sign_message(mnemonic: str, message: str) -> str:
     if not _validate_mnemonic(mnemonic):
         raise RequestError("Invalid mnemonic", type_="invalid_mnemonic")
     key = hashlib.sha256(mnemonic.encode("utf-8")).digest()
+    # HMAC is deterministic and for testing only; not a secure wallet signature.
     return hmac.new(key, message.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def _handle_operation(operation: str, params: Dict[str, Any]) -> Dict[str, Any]:
-    _ = _get_sandbox()
+    _ = get_sandbox()
     if operation == "generate_mnemonic":
-        word_count = int(params.get("word_count", 12)) if params.get("word_count") is not None else 12
+        word_count_raw = params.get("word_count", 12)
+        try:
+            word_count = int(word_count_raw)
+        except Exception as exc:  # noqa: BLE001
+            raise RequestError(
+                "'word_count' must be an integer",
+                type_="invalid_request",
+                details={"field": "word_count"},
+            ) from exc
         seed = params.get("seed")
         seed_int = int(seed) if isinstance(seed, (int, str)) and str(seed).isdigit() else None
         mnemonic = _generate_mnemonic(word_count, seed=seed_int)
@@ -136,23 +121,7 @@ def _handle(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def main() -> None:
-    try:
-        payload = _load_payload()
-        response = _handle(payload)
-        sys.stdout.write(json.dumps(response) + "\n")
-        sys.stdout.flush()
-    except RequestError as exc:
-        error_body = {"ok": False, "error": {"type": exc.type, "message": str(exc), "details": exc.details}}
-        sys.stdout.write(json.dumps(error_body) + "\n")
-        sys.stdout.flush()
-        sys.stderr.write(str(exc) + "\n")
-        sys.exit(1)
-    except Exception as exc:  # noqa: BLE001
-        error_body = {"ok": False, "error": {"type": "unexpected", "message": str(exc)}}
-        sys.stdout.write(json.dumps(error_body) + "\n")
-        sys.stdout.flush()
-        sys.stderr.write(str(exc) + "\n")
-        sys.exit(1)
+    run_main(_handle)
 
 
 if __name__ == "__main__":

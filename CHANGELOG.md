@@ -49,5 +49,11 @@ All notable changes to the CUGAR Agent project will be documented in this file.
 - ➕ Added: `crypto_wallet` MCP tool wrapper for mnemonic, derivation, and signing flows
 - ➕ Added: `moon_agents` MCP tool exposing agent templates and plan scaffolds
 - ➕ Added: `vault_tools` MCP tool bundle for JSON queries, KV storage, and timestamps
+- 🔁 Changed: Centralized MCP server utilities for payload handling and sandbox lookup
+- 🐞 Fixed: Hardened `crypto_wallet` parameter parsing and clarified non-production security posture
+- 🐞 Fixed: `extract_article` dependency fallback now respects missing `html` inputs
+- 🐞 Fixed: `moon_agents` no longer returns sandbox filesystem paths
+- 🐞 Fixed: `vault_tools` KV store now uses locked, atomic writes to avoid race conditions
+- 🧪 Added: Expanded `scrape_tweets` test coverage for limits, dependencies, and health checks
 
 ---

@@ -1,39 +1,17 @@
 from __future__ import annotations
 
 import json
-import os
-import sys
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
+from cuga.mcp_servers._shared import RequestError, get_sandbox, run_main
 
-class RequestError(Exception):
-    def __init__(self, message: str, *, type_: str = "bad_request", details: Dict[str, Any] | None = None) -> None:
-        super().__init__(message)
-        self.type = type_
-        self.details = details or {}
-
-
-def _get_sandbox() -> Path:
-    sandbox = os.getenv("CUGA_PROFILE_SANDBOX")
-    if not sandbox:
-        raise RequestError("CUGA_PROFILE_SANDBOX is required for sandboxed execution", type_="missing_env")
-    return Path(sandbox)
-
-
-def _load_payload() -> Dict[str, Any]:
-    if "--json" in sys.argv:
-        try:
-            idx = sys.argv.index("--json") + 1
-            return json.loads(sys.argv[idx])
-        except Exception as exc:  # noqa: BLE001
-            raise RequestError("Invalid JSON payload", details={"error": str(exc)}) from exc
-    raw = sys.stdin.read().strip() or "{}"
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError as exc:  # pragma: no cover - defensive
-        raise RequestError("Invalid JSON payload", details={"error": str(exc)}) from exc
+try:
+    import fcntl
+except Exception:  # pragma: no cover - platform without fcntl
+    fcntl = None  # type: ignore
 
 
 def _json_query(data: Any, expression: str) -> Any:
@@ -87,6 +65,36 @@ def _kv_path(base: Path) -> Path:
     return kv_dir / "kv_store.json"
 
 
+@contextmanager
+def _lock_path(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a+", encoding="utf-8") as handle:
+        if fcntl:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            yield handle
+        finally:
+            if fcntl:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def _read_store(handle) -> Dict[str, Any]:
+    handle.seek(0)
+    content = handle.read().strip()
+    if not content:
+        return {}
+    try:
+        return json.loads(content)
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _write_store(path: Path, data: Dict[str, Any]) -> None:
+    tmp_path = path.with_suffix(".tmp")
+    tmp_path.write_text(json.dumps(data))
+    tmp_path.replace(path)
+
+
 def _kv_store(params: Dict[str, Any], sandbox: Path) -> Dict[str, Any]:
     action = params.get("action")
     if action not in {"get", "set"}:
@@ -95,22 +103,19 @@ def _kv_store(params: Dict[str, Any], sandbox: Path) -> Dict[str, Any]:
     if not isinstance(key, str) or not key:
         raise RequestError("'key' is required", details={"field": "key"})
     store_path = _kv_path(sandbox)
-    store: Dict[str, Any] = {}
-    if store_path.exists():
-        try:
-            store = json.loads(store_path.read_text())
-        except Exception:  # noqa: BLE001
-            store = {}
-    if action == "get":
-        return {"result": store.get(key)}
-    value = params.get("value")
-    store[key] = value
-    store_path.write_text(json.dumps(store))
-    return {"result": value}
+
+    with _lock_path(store_path) as handle:
+        store = _read_store(handle)
+        if action == "get":
+            return {"result": store.get(key)}
+        value = params.get("value")
+        store[key] = value
+        _write_store(store_path, store)
+        return {"result": value}
 
 
 def _execute_tool(tool: str, params: Dict[str, Any]) -> Dict[str, Any]:
-    sandbox = _get_sandbox()
+    sandbox = get_sandbox(as_path=True)
     sandbox.mkdir(parents=True, exist_ok=True)
     if tool == "time_now":
         return {"result": datetime.now(timezone.utc).isoformat()}
@@ -140,23 +145,7 @@ def _handle(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def main() -> None:
-    try:
-        payload = _load_payload()
-        response = _handle(payload)
-        sys.stdout.write(json.dumps(response) + "\n")
-        sys.stdout.flush()
-    except RequestError as exc:
-        error_body = {"ok": False, "error": {"type": exc.type, "message": str(exc), "details": exc.details}}
-        sys.stdout.write(json.dumps(error_body) + "\n")
-        sys.stdout.flush()
-        sys.stderr.write(str(exc) + "\n")
-        sys.exit(1)
-    except Exception as exc:  # noqa: BLE001
-        error_body = {"ok": False, "error": {"type": "unexpected", "message": str(exc)}}
-        sys.stdout.write(json.dumps(error_body) + "\n")
-        sys.stdout.flush()
-        sys.stderr.write(str(exc) + "\n")
-        sys.exit(1)
+    run_main(_handle)
 
 
 if __name__ == "__main__":

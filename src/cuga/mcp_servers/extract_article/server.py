@@ -1,19 +1,11 @@
 from __future__ import annotations
 
-import json
-import os
-import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from html.parser import HTMLParser
 from typing import Any, Dict, List, Optional
 
-
-class RequestError(Exception):
-    def __init__(self, message: str, *, type_: str = "bad_request", details: Dict[str, Any] | None = None) -> None:
-        super().__init__(message)
-        self.type = type_
-        self.details = details or {}
+from cuga.mcp_servers._shared import RequestError, get_sandbox, run_main
 
 
 @dataclass
@@ -62,27 +54,6 @@ class _SimpleHTMLExtractor(HTMLParser):
             keywords=[],
             summary=None,
         )
-
-
-def _get_sandbox() -> str:
-    sandbox = os.getenv("CUGA_PROFILE_SANDBOX")
-    if not sandbox:
-        raise RequestError("CUGA_PROFILE_SANDBOX is required for sandboxed execution", type_="missing_env")
-    return sandbox
-
-
-def _load_payload() -> Dict[str, Any]:
-    if "--json" in sys.argv:
-        try:
-            idx = sys.argv.index("--json") + 1
-            return json.loads(sys.argv[idx])
-        except Exception as exc:  # noqa: BLE001
-            raise RequestError("Invalid JSON payload", details={"error": str(exc)}) from exc
-    raw = sys.stdin.read().strip() or "{}"
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError as exc:  # pragma: no cover - defensive
-        raise RequestError("Invalid JSON payload", details={"error": str(exc)}) from exc
 
 
 def _extract_with_newspaper(url: Optional[str], html: Optional[str], language: Optional[str], timeout_ms: Optional[int]) -> ArticleResult:
@@ -141,26 +112,34 @@ def _extract_article(params: Dict[str, Any]) -> Dict[str, Any]:
     html = params.get("html")
     language = params.get("language")
     timeout_ms = params.get("timeout_ms")
-    if not url and not html:
+    url_val = url if isinstance(url, str) else None
+    html_val = html if isinstance(html, str) else None
+    if not url_val and not html_val:
         raise RequestError("'url' or 'html' is required", details={"fields": ["url", "html"]})
-    _ = _get_sandbox()
+    _ = get_sandbox()
 
     try:
         article = _extract_with_newspaper(
-            url if isinstance(url, str) else None,
-            html if isinstance(html, str) else None,
+            url_val,
+            html_val,
             language if isinstance(language, str) else None,
             timeout_ms if isinstance(timeout_ms, int) else None,
         )
     except RequestError as exc:
         if exc.type != "missing_dependency":
             raise
+        if html_val is None:
+            raise RequestError(
+                "newspaper4k dependency is required when only 'url' is provided",
+                type_="missing_dependency",
+                details={"fields": ["url"], "hint": "Provide 'html' to use fallback parser."},
+            ) from exc
         extractor = _SimpleHTMLExtractor()
-        extractor.feed(html or "")
+        extractor.feed(html_val)
         article = extractor.result()
-    except Exception:  # noqa: BLE001
+    except Exception:
         extractor = _SimpleHTMLExtractor()
-        extractor.feed(html or "")
+        extractor.feed(html_val or "")
         article = extractor.result()
     return {"article": asdict(article)}
 
@@ -177,23 +156,7 @@ def _handle(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def main() -> None:
-    try:
-        payload = _load_payload()
-        response = _handle(payload)
-        sys.stdout.write(json.dumps(response) + "\n")
-        sys.stdout.flush()
-    except RequestError as exc:
-        error_body = {"ok": False, "error": {"type": exc.type, "message": str(exc), "details": exc.details}}
-        sys.stdout.write(json.dumps(error_body) + "\n")
-        sys.stdout.flush()
-        sys.stderr.write(str(exc) + "\n")
-        sys.exit(1)
-    except Exception as exc:  # noqa: BLE001
-        error_body = {"ok": False, "error": {"type": "unexpected", "message": str(exc)}}
-        sys.stdout.write(json.dumps(error_body) + "\n")
-        sys.stdout.flush()
-        sys.stderr.write(str(exc) + "\n")
-        sys.exit(1)
+    run_main(_handle)
 
 
 if __name__ == "__main__":
