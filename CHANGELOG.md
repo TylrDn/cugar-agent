@@ -17,6 +17,7 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 - ➕ Added: CLI for listing agents, running goals, and exporting structured results
 - ➕ Added: External tool plugin system with discovery helpers and a template plugin example
 - ➕ Added: Expanded guardrail verification script (`scripts/verify_guardrails.py`), inheritance markers, and CI enforcement
+- ➕ Added: Architecture/registry observability documentation set (overview, registry, tiers, sandboxes, compose, ADR, glossary)
 
 ### Changed
 - 🔁 Changed: Centralized MCP server utilities for payload handling and sandbox lookup

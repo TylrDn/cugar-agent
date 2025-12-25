@@ -1,0 +1,256 @@
+# Canonical MCP registry (Tier1 default-enabled, Tier2 off)
+version: v0
+defaults:
+  sandbox: py-slim
+  enabled: true
+
+entries:
+  # Tier 1 (on)
+  langflow:
+    id: langflow
+    tier: 1
+    enabled: true
+    protocol: http
+    ref: ${LANGFLOW_HOST:-http://langflow:7860}
+    scopes: [orchestrator]
+    env: {LANGFLOW_API_KEY: ${LANGFLOW_API_KEY:?}}
+    mounts: []
+  altk:
+    id: altk
+    tier: 1
+    enabled: true
+    protocol: http
+    ref: ${ALTK_HOST:-http://altk:8080}
+    scopes: [orchestrator]
+    env: {ALTK_TOKEN: ${ALTK_TOKEN:?}}
+    mounts: []
+  e2b:
+    id: mcp.e2b
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://e2b
+    sandbox: py-full
+    scopes: [exec]
+    env: {E2B_API_KEY: ${E2B_API_KEY:?}}
+    mounts: [/workdir:rw]
+  fs:
+    id: mcp.fs
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://filesystem
+    sandbox: py-slim
+    scopes: [fs]
+    env: {}
+    mounts: [/workspace:ro, /workspace/output:rw]
+  fast-fs:
+    id: mcp.fastfs
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://fast-filesystem-mcp
+    sandbox: py-slim
+    scopes: [fs]
+    env: {}
+    mounts: [/workspace:ro, /workspace/output:rw]
+  llm-context:
+    id: mcp.llmcontext
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://llm-context
+    sandbox: py-slim
+    scopes: [context]
+    env: {}
+    mounts: [/workspace/output:rw]
+  filestash:
+    id: mcp.filestash
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://filestash
+    sandbox: py-full
+    scopes: [backup]
+    env: {}
+    mounts: [/workspace/output:rw]
+  backup:
+    id: mcp.backup
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://backup
+    sandbox: py-full
+    scopes: [backup]
+    env: {}
+    mounts: [/workspace/output:rw]
+  browser:
+    id: mcp.browser
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://browser
+    sandbox: node-full
+    scopes: [web]
+    env: {BROWSER_API_KEY: ${BROWSER_API_KEY:-""}}
+    mounts: []
+  search:
+    id: mcp.search
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://search
+    sandbox: node-slim
+    scopes: [web]
+    env: {SEARCH_API_KEY: ${SEARCH_API_KEY:-""}}
+    mounts: []
+  snscrape:
+    id: mcp.snscrape
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://snscrape
+    sandbox: py-full
+    scopes: [social]
+    env: {}
+    mounts: []
+  newspaper4k:
+    id: mcp.newspaper
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://newspaper4k
+    sandbox: py-full
+    scopes: [news]
+    env: {}
+    mounts: []
+  git:
+    id: mcp.git
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://git
+    sandbox: py-slim
+    scopes: [vcs]
+    env: {}
+    mounts: [/workspace/repos:rw]
+  github:
+    id: mcp.github
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://github
+    sandbox: py-slim
+    scopes: [vcs]
+    env: {GITHUB_TOKEN: ${GITHUB_TOKEN:?}}
+    mounts: []
+  gitlab:
+    id: mcp.gitlab
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://gitlab
+    sandbox: py-slim
+    scopes: [vcs]
+    env: {GITLAB_TOKEN: ${GITLAB_TOKEN:?}}
+    mounts: []
+  gitingest:
+    id: mcp.gitingest
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://gitingest
+    sandbox: py-slim
+    scopes: [vcs]
+    env: {}
+    mounts: []
+  phabricator:
+    id: mcp.phabricator
+    tier: 1
+    enabled: true
+    protocol: mcp
+    ref: docker://phabricator
+    sandbox: py-slim
+    scopes: [vcs]
+    env: {PHAB_TOKEN: ${PHAB_TOKEN:-""}}
+    mounts: []
+
+  # Tier 2 (off by default)
+  crypto:
+    id: mcp.crypto
+    tier: 2
+    enabled: false
+    protocol: mcp
+    ref: docker://crypto
+    sandbox: py-full
+    scopes: [finance]
+    env: {CRYPTO_API_KEY: ${CRYPTO_API_KEY:-""}}
+    mounts: []
+  finance:
+    id: mcp.finance
+    tier: 2
+    enabled: false
+    protocol: mcp
+    ref: docker://finance
+    sandbox: py-full
+    scopes: [finance]
+    env: {FIN_API_KEY: ${FIN_API_KEY:-""}}
+    mounts: []
+  wordpress:
+    id: mcp.wordpress
+    tier: 2
+    enabled: false
+    protocol: mcp
+    ref: docker://wp-mcp
+    sandbox: node-full
+    scopes: [cms]
+    env: {WP_TOKEN: ${WP_TOKEN:-""}}
+    mounts: []
+  social:
+    id: mcp.social
+    tier: 2
+    enabled: false
+    protocol: mcp
+    ref: docker://social
+    sandbox: node-full
+    scopes: [social]
+    env: {}
+    mounts: []
+  sqldb:
+    id: mcp.sqldb
+    tier: 2
+    enabled: false
+    protocol: mcp
+    ref: docker://sql
+    sandbox: py-full
+    scopes: [db]
+    env: {SQL_URL: ${SQL_URL:-""}}
+    mounts: [/workspace/db:rw]
+  vectordb:
+    id: mcp.vector
+    tier: 2
+    enabled: false
+    protocol: mcp
+    ref: docker://vector
+    sandbox: py-full
+    scopes: [vector]
+    env: {VECTOR_URL: ${VECTOR_URL:-""}}
+    mounts: [/workspace/vector:rw]
+  langfuse:
+    id: observability.langfuse
+    tier: 2
+    enabled: false
+    protocol: http
+    ref: ${LANGFUSE_HOST:-http://langfuse:3000}
+    scopes: [observability]
+    env: {LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-""}, LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-""}}
+    mounts: []
+  langsmith:
+    id: observability.langsmith
+    tier: 2
+    enabled: false
+    protocol: http
+    ref: ${LANGCHAIN_ENDPOINT:-https://api.smith.langchain.com}
+    scopes: [observability]
+    env: {LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-""}, LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-""}}
+    mounts: []
