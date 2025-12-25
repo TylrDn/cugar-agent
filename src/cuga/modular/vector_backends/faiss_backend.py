@@ -26,7 +26,9 @@ class FaissBackend(VectorBackend):
             return
         dim = len(records[0].embedding)
         self._ensure_index(dim)
-        embeddings = self._np.array([rec.embedding for rec in records], dtype="float32")
+        embeddings = self._np.stack(
+            [self._np.array(rec.embedding, dtype="float32") for rec in records]
+        )
         self._index.add(embeddings)
         self._metadata.extend(records)
 
