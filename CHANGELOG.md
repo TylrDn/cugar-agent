@@ -46,6 +46,8 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 - 📚 Documented: Branch cleanup workflow and issue stubs for consolidating Codex branches
 - 📚 Documented: Root guardrails, audit expectations, and routing table for guardrail updates
 - 📚 Documented: Refined canonical `AGENTS.md` with quick checklist, local template, and cross-links to policy docs
+- 📚 Documented: Architecture topology (controller/planner/tool bus), orchestration modes, and observability enhancements
+- 📚 Documented: STRIDE-lite threat model and red-team checklist covering sandbox escape, prompt injection, and leakage tests
 
 ### Testing
 - 🧪 Added: Expanded `scrape_tweets` test coverage for limits, dependencies, and health checks
