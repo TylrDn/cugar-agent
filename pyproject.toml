@@ -22,6 +22,7 @@ dependencies = [
     "playwright==1.49.0",
     "browsergym-core==0.13.0",
     "python-dotenv",
+    "litellm>=1.51.5",
     "loguru",
     "packaging>=23.2",
     "pydantic>=2.9.0",
