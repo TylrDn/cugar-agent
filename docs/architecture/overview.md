@@ -1,55 +1,31 @@
-Assumptions (from current stack): Python 3.12+ orchestration with MCP registry/lifecycle and Langflow support in CUGA agent.​:codex-file-citation[codex-file-citation]{line_range_start=35 line_range_end=59 path=README.md git_url="https://github.com/TylrDn/cugar-agent/blob/main/README.md#L35-L59"}​​:codex-file-citation[codex-file-citation]{line_range_start=51 line_range_end=83 path=docs/MCP_INTEGRATION.md git_url="https://github.com/TylrDn/cugar-agent/blob/main/docs/MCP_INTEGRATION.md#L51-L83"}​
+# Architecture Overview
 
-CUGAR orchestration (logical)
-+-------------------+        control           +---------------------------+
-| Langflow UI/ALTK  | -----------------------> | Agent Orchestrator (CUGA) |
-+---------+---------+                          +------------+-------------+
-          |                                               |
-          |                                               v
-          |                                   +-----------+------------+
-          |                                   | Core Interfaces        |
-          |                                   | - ToolBus              |
-          |                                   | - StateStore           |
-          |                                   | - VectorIndex          |
-          |                                   | - TraceSink            |
-          |                                   | - SecretStore          |
-          |                                   | - ProfileRegistry      |
-          |                                   +-----------+------------+
-          |                                               |
-          |                           +-------------------+-------------------+
-          |                           | Tool Adapters (MCP bridge)            |
-          |                           | - Execution MCP (E2B)                 |
-          |                           | - File MCP (FileSystem/fast/llm/backup|
-          |                           | - Web MCP (browser/search)            |
-          |                           | - VCS MCP (Git/GitHub/GitLab/Phab)    |
-          |                           | - News/social (snscrape/newspaper4k)  |
-          |                           | - Optional Tier2 (DB/crypto/wp/...)   |
-          |                           +-------------------+-------------------+
-          |                                               |
-          |                           +-------------------+-------------------+
-          |                           | Sandboxes (Docker profiles)           |
-          |                           | - py-slim/full, node-slim/full        |
-          |                           | - FS mounts + network policies        |
-          |                           +-------------------+-------------------+
-          |                                               |
-          |                           +-------------------+-------------------+
-          |                           | Observability (OTEL/LangFuse/LangSmith|
-          |                           | Metrics/traces via TraceSink          |
-          |                           +-------------------+-------------------+
-          |                                               |
-          +--------------------------- state/traces <-----+
-Data flow: request → Langflow/ALTK → Orchestrator (profile) → ToolBus → MCP adapter → sandboxed tool → responses → StateStore → TraceSink.
-Control flow: policy/config resolve registry entry → launch per profile sandbox → enforce limits/observability → return results.
+Assumptions: Python 3.12+ runtime, MCP registry + lifecycle already present, and Langflow + ALTK operate as the orchestration control plane for the agent. The term **orchestrator** refers to the single logical service representing **Langflow + ALTK** (even if internally split).
 
-Core interfaces (replaceable modules)
-- ToolBus: resolve tool id → call adapter (MCP/HTTP/native); enforces retries, timeouts, breakers.
-- StateStore: conversation + artifact persistence (pluggable local/remote).
-- VectorIndex: embeddings store; optional (Tier2).
-- TraceSink: observability abstraction (OTEL/LangFuse/LangSmith).
-- SecretStore: env/secret backend shim (no hardcoded secrets).
-- ProfileRegistry: single source of truth from docs/mcp/registry.yaml, profile-aware.
+```
+Langflow UI / ALTK
+        ↓
+Agent Orchestrator (CUGAR)
+        ↓
+   Core Interfaces
+        ↓
+ Tool Adapters (MCP)
+        ↓
+Sandboxed MCP Runners
+        ↓
+   State + Tracing
+```
 
-State & config
-- Single registry at docs/mcp/registry.yaml drives tool availability and sandbox hints.
-- Sandboxes defined in docs/compute/sandboxes.md and wired via ops/docker-compose.proposed.yaml.
-- Observability defaults in docs/observability/config.md.
+## Control vs Data Flow
+- **Control flow:** orchestration → core interfaces → adapters → sandbox launch; governed by the registry and profile selection.
+- **Data flow:** sandboxed adapters read/write only within their scoped mounts, emit traces to observability sinks, and return sanitized results to the orchestrator.
+
+## Authoritative Core Interfaces
+- `ToolBus`: broker between orchestrator intents and adapter calls.
+- `StateStore`: persistence boundary for plans, runs, and artifacts.
+- `VectorIndex`: retrieval interface for embeddings or semantic search.
+- `TraceSink`: export pipeline for traces and audit events (e.g., OTEL/LangFuse/LangSmith).
+- `SecretStore`: provider for scoped credentials (env, secret stores, or injected at runtime).
+- `ProfileRegistry`: single source of truth for which tools/profiles are active per tier.
+
+Guardrails: updates to any profile or registry must first strengthen the guardrail section in `AGENTS.md` (tool allow/deny lists, escalation ceilings, redaction rules, budget caps) before enabling new Tier 1 defaults.

@@ -1,18 +1,18 @@
-# ADR 0005: Interfaces-first registry-driven integrations
+# ADR 0005: Interfaces-First Registry
 
 ## Status
 Proposed
 
 ## Context
-CUGA now integrates MCP and external tools via registry-driven orchestration. Root guardrails require deterministic registry merges and sandbox isolation.​:codex-file-citation[codex-file-citation]{line_range_start=17 line_range_end=42 path=AGENTS.md git_url="https://github.com/TylrDn/cugar-agent/blob/main/AGENTS.md#L17-L42"}​​:codex-file-citation[codex-file-citation]{line_range_start=15 line_range_end=124 path=docs/MCP_INTEGRATION.md git_url="https://github.com/TylrDn/cugar-agent/blob/main/docs/MCP_INTEGRATION.md#L15-L124"}​
+The agent platform must stay orchestration-agnostic while using Langflow + ALTK as the control plane. Vendor SDKs must remain outside core; adapters communicate via MCP and are governed by a single registry.
 
 ## Decision
-- Core communicates through small interfaces (ToolBus, StateStore, VectorIndex, TraceSink, SecretStore, ProfileRegistry). No vendor-specific calls in core.
-- docs/mcp/registry.yaml is the single source of truth for tool availability, tiers, sandboxes, and env hooks.
-- Tier 1 integrations are enabled by default; Tier 2 integrations remain opt-in via compose profiles and registry flags.
-- Observability/budget controls live in env-driven settings (see docs/observability/config.md).
+- Define and stabilize core interfaces (`ToolBus`, `StateStore`, `VectorIndex`, `TraceSink`, `SecretStore`, `ProfileRegistry`).
+- Treat `docs/mcp/registry.yaml` as the single source of truth. Compose, tiers docs, and runtime flags are derived from it.
+- Tier 1 integrations are default-on; Tier 2 integrations are opt-in via registry `enabled: false` and compose profiles.
+- Observability and budget enforcement are fully env-driven to avoid code drift.
 
 ## Consequences
-- Adding a tool requires implementing an adapter behind interfaces and a registry entry; core code remains unchanged.
-- Operators can hot-swap tools by editing registry.yaml and reloading without code changes.
-- Profiles remain isolated; sandboxes and mounts are explicit and least-privilege.
+- New integrations must land as registry entries with matching sandbox profiles before compose changes.
+- Breaking registry changes require version bumps and guardrail review.
+- Hot-swapping integrations is possible by flipping registry entries and rerunning the doc generator.

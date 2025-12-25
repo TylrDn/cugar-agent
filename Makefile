@@ -1,4 +1,4 @@
-.PHONY: profile-demo_power env-dev test
+.PHONY: profile-demo_power env-dev test docs check-docs
 
 profile-demo_power:
 	uv run python ./mcp-foundation/scripts/merge_registry.py --profile demo_power
@@ -11,3 +11,9 @@ env-dev:
 
 test:
 	uv run pytest -q
+
+docs:
+	python build/gen_tiers_table.py
+
+check-docs: docs
+	@git diff --exit-code docs/mcp/tiers.md

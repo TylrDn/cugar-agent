@@ -1,34 +1,31 @@
-Tier 1: mandatory defaults for foundational orchestration, execution, filesystem, web/search, VCS, and news/social tools. Always enabled in registry.yaml and wired in compose; sandboxed with least privilege.
+# MCP Tiers
 
-Tier 2: optional extensions (finance/crypto, CMS/social, DB/vector, observability providers). Disabled by default; opt-in via compose profiles and registry toggle. Unrated: community plugins only, loaded via registry fragments outside core.
+Tier 1 integrations are foundational and default-on; Tier 2 integrations are optional and default disabled. Unrated entries cover community plugins and are never enabled by default.
 
-Integration matrix
-| tool             | tier | registry id       | auth vars                  | sandbox profile | fs scope              | network | observability taps | status |
-|------------------|------|-------------------|----------------------------|-----------------|----------------------|---------|--------------------|--------|
-| Langflow         | 1    | langflow          | LANGFLOW_API_KEY           | n/a             | none                  | on      | TraceSink          | on     |
-| ALTK             | 1    | altk              | ALTK_TOKEN                 | n/a             | none                  | on      | TraceSink          | on     |
-| E2B MCP          | 1    | mcp.e2b           | E2B_API_KEY                | py-full         | /workdir rw           | on      | TraceSink          | on     |
-| FileSystem MCP   | 1    | mcp.fs            | none                       | py-slim         | /workspace ro + out rw| off     | TraceSink          | on     |
-| fast-filesystem  | 1    | mcp.fastfs        | none                       | py-slim         | /workspace ro + out rw| off     | TraceSink          | on     |
-| llm-context      | 1    | mcp.llmcontext    | none                       | py-slim         | /workspace/output rw  | off     | TraceSink          | on     |
-| FileStash        | 1    | mcp.filestash     | none                       | py-full         | /workspace/output rw  | on      | TraceSink          | on     |
-| Backup MCP       | 1    | mcp.backup        | none                       | py-full         | /workspace/output rw  | on      | TraceSink          | on     |
-| Browser MCP      | 1    | mcp.browser       | BROWSER_API_KEY optional   | node-full       | none                  | on      | TraceSink          | on     |
-| Search MCP       | 1    | mcp.search        | SEARCH_API_KEY optional    | node-slim       | none                  | on      | TraceSink          | on     |
-| snscrape         | 1    | mcp.snscrape      | none                       | py-full         | none                  | on      | TraceSink          | on     |
-| newspaper4k      | 1    | mcp.newspaper     | none                       | py-full         | none                  | on      | TraceSink          | on     |
-| Git CLI          | 1    | mcp.git           | none                       | py-slim         | /workspace/repos rw   | off     | TraceSink          | on     |
-| GitHub           | 1    | mcp.github        | GITHUB_TOKEN               | py-slim         | none                  | on      | TraceSink          | on     |
-| GitLab           | 1    | mcp.gitlab        | GITLAB_TOKEN               | py-slim         | none                  | on      | TraceSink          | on     |
-| Gitingest        | 1    | mcp.gitingest     | none                       | py-slim         | none                  | on      | TraceSink          | on     |
-| Phabricator      | 1    | mcp.phabricator   | PHAB_TOKEN optional        | py-slim         | none                  | on      | TraceSink          | on     |
-| Crypto MCP       | 2    | mcp.crypto        | CRYPTO_API_KEY optional    | py-full         | none                  | on      | TraceSink          | off    |
-| Finance MCP      | 2    | mcp.finance       | FIN_API_KEY optional       | py-full         | none                  | on      | TraceSink          | off    |
-| WordPress MCP    | 2    | mcp.wordpress     | WP_TOKEN optional          | node-full       | none                  | on      | TraceSink          | off    |
-| Social/content   | 2    | mcp.social        | none                       | node-full       | none                  | on      | TraceSink          | off    |
-| SQL DB           | 2    | mcp.sqldb         | SQL_URL optional           | py-full         | /workspace/db rw      | on      | TraceSink          | off    |
-| Vector DB        | 2    | mcp.vector        | VECTOR_URL optional        | py-full         | /workspace/vector rw  | on      | TraceSink          | off    |
-| LangFuse         | 2    | observability.langfuse | LANGFUSE_PUBLIC_KEY/SECRET_KEY | n/a | none | on | TraceSink | off |
-| LangSmith        | 2    | observability.langsmith | LANGCHAIN_API_KEY        | n/a             | none                  | on      | TraceSink          | off    |
+The integration matrix below is generated from `docs/mcp/registry.yaml` to avoid drift. See `../compute/sandboxes.md` for sandbox profiles and `../observability/config.md` for telemetry env keys.
 
-Links: registry entries in docs/mcp/registry.yaml; sandbox profiles in docs/compute/sandboxes.md; observability settings in docs/observability/config.md.
+| tool | tier | registry id | auth env vars | sandbox profile | fs scope | network | observability taps | status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ALTK Planner | Tier 1 | altk | ALTK_HOST | node-full | - | - | - | enabled |
+| Backup MCP | Tier 1 | mcp.backup | - | py-full | /workspace/backups:/workspace/backups:rw | - | - | enabled |
+| Browser MCP | Tier 1 | mcp.browser | BROWSER_BASE_URL | node-full | - | - | - | enabled |
+| Docker MCP Sandbox | Tier 1 | mcp.docker | - | py-full | /var/run/docker.sock:/var/run/docker.sock:ro | - | - | enabled |
+| E2B MCP Sandbox | Tier 1 | mcp.e2b | E2B_API_KEY | py-full | /workspace:/workdir:rw | - | - | enabled |
+| Fast FileSystem MCP | Tier 1 | mcp.fast-fs | - | py-slim | /workspace:/workspace:ro, /workspace/cache:/workspace/cache:rw | - | - | enabled |
+| FileStash MCP | Tier 1 | mcp.filestash | - | py-full | /workspace/storage:/workspace/storage:rw | - | - | enabled |
+| FileSystem MCP | Tier 1 | mcp.fs | - | py-slim | /workspace:/workspace:ro, /workspace/artifacts:/workspace/artifacts:rw | - | - | enabled |
+| Git CLI MCP | Tier 1 | mcp.git | - | py-slim | /workspace/repos:/workspace/repos:ro | - | - | enabled |
+| GitHub MCP | Tier 1 | mcp.github | GITHUB_TOKEN | py-slim | /workspace/repos:/workspace/repos:ro | - | - | enabled |
+| Gitingest MCP | Tier 1 | mcp.gitingest | - | py-slim | /workspace/repos:/workspace/repos:ro | - | - | enabled |
+| GitLab MCP | Tier 1 | mcp.gitlab | GITLAB_TOKEN | py-slim | /workspace/repos:/workspace/repos:ro | - | - | enabled |
+| Langflow Control Plane | Tier 1 | langflow | LANGFLOW_HOST | node-full | - | - | - | enabled |
+| LLM Context MCP | Tier 1 | mcp.llm-context | - | py-slim | /workspace/context:/workspace/context:rw | - | - | enabled |
+| Newspaper4k MCP | Tier 1 | mcp.newspaper | - | py-full | - | - | - | enabled |
+| Phabricator MCP | Tier 1 | mcp.phabricator | PHABRICATOR_TOKEN | py-slim | /workspace/repos:/workspace/repos:ro | - | - | enabled |
+| Search MCP | Tier 1 | mcp.search | - | node-slim | - | - | - | enabled |
+| snscrape MCP | Tier 1 | mcp.snscrape | - | py-full | /workspace/social:/workspace/social:rw | - | - | enabled |
+| LangFuse | Tier 2 | langfuse | LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY | py-slim | - | - | - | disabled |
+| LangSmith | Tier 2 | langsmith | LANGCHAIN_API_KEY | py-slim | - | - | - | disabled |
+| Observability Exporter | Tier 2 | observability | - | py-slim | - | - | - | disabled |
+| Scheduler / DAG MCP | Tier 2 | scheduler | - | py-full | /workspace/schedules:/workspace/schedules:rw | - | - | disabled |
+| Vector DB MCP | Tier 2 | vector-db | VECTOR_DB_URL | py-full | /workspace/vector:/workspace/vector:rw | - | - | disabled |

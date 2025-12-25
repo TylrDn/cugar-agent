@@ -1,7 +1,9 @@
-- Tier 1: mandatory baseline tools (enabled by default; see docs/mcp/registry.yaml and docs/mcp/tiers.md).
-- Tier 2: optional extensions (disabled by default; enable via registry + compose profiles).
-- Unrated: community plugins not in core; load only via external registry fragments.
-- Sandbox Profile: predefined resource+policy bundle for MCP containers (docs/compute/sandboxes.md).
-- Tool: callable capability exposed via MCP/HTTP; referenced by registry id.
-- Adapter: module implementing ToolBus-facing interface for a specific protocol/vendor.
-- Registry: canonical mapping of tool ids to refs, sandboxes, env, and tier (docs/mcp/registry.yaml).
+# Definitions
+
+- **Tier 1:** Foundational integrations, default enabled; see `docs/mcp/tiers.md`.
+- **Tier 2:** Optional integrations, default disabled; enable via registry and compose profiles.
+- **Unrated:** Community or experimental plugins; never default-on.
+- **Sandbox Profile:** Resource + policy bundle selecting the compose service; see `docs/compute/sandboxes.md`.
+- **Tool:** A callable capability exposed via MCP or HTTP.
+- **Adapter:** An implementation that binds a tool to the core interfaces and sandbox profile.
+- **Registry:** Canonical list of tools, profiles, and defaults at `docs/mcp/registry.yaml`.

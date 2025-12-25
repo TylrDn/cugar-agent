@@ -1,104 +1,102 @@
 version: "3.9"
+
 services:
   orchestrator:
-    image: cuga/orchestrator:latest
+    image: ghcr.io/example/cugar-orchestrator:latest
     env_file:
-      - ./ops/env/orchestrator.env
-      - ./ops/env/observability.env
+      - ./env/orchestrator.env
     environment:
-      # Observability (see docs/observability/config.md)
-      # AGENT_TRACE_SAMPLE_RATE: "0.1"
-      # AGENT_TRACE_MAX_LATENCY_MS: "5000"
-      # AGENT_TOOL_MAX_LATENCY_MS: "tool=3000,search=2000"
-      # AGENT_RUN_BUDGET_USD: "5"
-      # AGENT_DAILY_BUDGET_USD: "20"
-      # AGENT_BUDGET_ENFORCE: "warn"
-      # LANGFUSE_HOST: "http://langfuse:3000"
-      # LANGFUSE_PUBLIC_KEY: ""
-      # LANGFUSE_SECRET_KEY: ""
-      # LANGCHAIN_TRACING_V2: "off"
-      # LANGCHAIN_ENDPOINT: "https://api.smith.langchain.com"
-      # LANGCHAIN_API_KEY: ""
-      # LANGCHAIN_PROJECT: "cugar"
-      # OTEL_EXPORTER_OTLP_ENDPOINT: "http://observability:4318"
-      # OTEL_EXPORTER_OTLP_HEADERS: ""
-    volumes:
-      - ./docs/mcp/registry.yaml:/app/registry.yaml:ro
-      - ./workspace/output:/app/output:rw
+      # LANGFLOW_HOST: http://langflow:7860
+      # ALTK_HOST: http://altk:8080
+      # AGENT_TRACE_SAMPLE_RATE: 0.1
     depends_on:
       - mcp.e2b
       - mcp.fs
-      - mcp.web
-      - mcp.vcs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
+    profiles: ["tier1"]
 
   mcp.e2b:
-    image: e2b/mcp:latest
-    profiles: ["tier1"]
+    image: ghcr.io/example/mcp-e2b:latest
     environment:
-      # E2B_API_KEY: ""
+      # E2B_API_KEY: ${E2B_API_KEY}
     volumes:
-      - ./workspace:/workspace:ro
-      - ./workspace/output:/workspace/output:rw
+      - type: bind
+        source: ../
+        target: /workdir
+        read_only: false
     healthcheck:
-      test: ["CMD", "echo", "ok"]
-      interval: 60s
+      test: ["CMD", "true"]
+    profiles: ["tier1"]
 
   mcp.fs:
-    image: fastmcp/filesystem:latest
-    profiles: ["tier1"]
+    image: ghcr.io/example/mcp-fs:latest
     volumes:
-      - ./workspace:/workspace:ro
-      - ./workspace/output:/workspace/output:rw
-    read_only: true
+      - type: bind
+        source: ../
+        target: /workspace
+        read_only: true
+      - type: bind
+        source: ../artifacts
+        target: /workspace/artifacts
+        read_only: false
     healthcheck:
-      test: ["CMD", "echo", "ok"]
-      interval: 60s
-
-  mcp.web:
-    image: fastmcp/browser:latest
+      test: ["CMD", "true"]
     profiles: ["tier1"]
+
+  mcp.web-slim:
+    image: node:20-slim
     environment:
-      # BROWSER_API_KEY: ""
-      # SEARCH_API_KEY: ""
+      # WEB_PROFILE: node-slim
+      # BROWSER_BASE_URL: http://browser:3000
+    command: ["node", "index.js"]
     healthcheck:
-      test: ["CMD", "echo", "ok"]
-      interval: 60s
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+    profiles: ["tier1"]
+
+  mcp.web-full:
+    image: node:20
+    environment:
+      # WEB_PROFILE: node-full
+      # BROWSER_BASE_URL: http://browser:3000
+    command: ["node", "index.js"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+    profiles: ["tier1"]
 
   mcp.vcs:
-    image: fastmcp/git:latest
-    profiles: ["tier1"]
+    image: ghcr.io/example/mcp-vcs:latest
+    read_only: true
     volumes:
-      - ./workspace/repos:/workspace/repos:rw
-    read_only: false
+      - type: bind
+        source: ../repos
+        target: /workspace/repos
+        read_only: true
     healthcheck:
-      test: ["CMD", "git", "--version"]
-      interval: 60s
+      test: ["CMD", "true"]
+    profiles: ["tier1"]
 
   observability:
     image: otel/opentelemetry-collector:latest
-    profiles: ["tier2"]
-    command: ["--config=/etc/otel/config.yaml"]
     environment:
-      # OTEL_EXPORTER_OTLP_ENDPOINT: ""
-      # OTEL_EXPORTER_OTLP_HEADERS: ""
-    volumes:
-      - ./ops/otel-config.yaml:/etc/otel/config.yaml:ro
+      # OTEL_EXPORTER_OTLP_ENDPOINT: http://otel:4318
+      # AGENT_TRACE_SAMPLE_RATE: 0.1
     healthcheck:
-      test: ["CMD", "otelcol", "--version"]
-      interval: 60s
+      test: ["CMD", "true"]
+    profiles: ["tier2"]
 
   vector-db:
-    image: qdrant/qdrant:latest
-    profiles: ["tier2"]
+    image: ghcr.io/example/vector-db:latest
     environment:
-      # VECTOR_URL: "http://vector-db:6333"
+      # VECTOR_DB_URL: http://vector-db:8080
     volumes:
-      - ./workspace/vector:/qdrant/storage:rw
+      - type: bind
+        source: ../vector
+        target: /workspace/vector
+        read_only: false
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
-      interval: 60s
+      test: ["CMD", "true"]
+    profiles: ["tier2"]

@@ -1,14 +1,20 @@
-## Milestone 1: Tier 1 registry + compose wiring
-Acceptance: registry.yaml lists all Tier 1 tools enabled; compose starts orchestrator + mcp.e2b/mcp.fs/mcp.web/mcp.vcs with healthchecks. Kill-switch: revert to minimal orchestrator-only profile.
+# Integration Plan
 
-## Milestone 2: Sandbox enforcement
-Acceptance: sandbox profiles py-slim/full and node-slim/full applied per tool; read-only mounts verified for fs tools. Kill-switch: disable sandbox profiles in compose and fall back to in-process mock tools.
+**Top action (pre-task):** Update and strengthen `AGENTS.md` guardrails (tool allowlist/denylist, escalation ceilings, redaction rules, budget caps) before enabling any Tier 1 defaults.
 
-## Milestone 3: Observability/budget hooks
-Acceptance: AGENT_* envs control sampling, latency, and budgets; LangFuse/LangSmith/OTEL endpoints configurable; traces emitted per tool. Kill-switch: set AGENT_TRACE_SAMPLE_RATE=0 and AGENT_BUDGET_ENFORCE=warn to disable hard enforcement.
-
-## Milestone 4: Tier 2 opt-in modules
-Acceptance: Tier 2 entries present but disabled; compose profiles `tier2` start optional services (observability, vector-db). Kill-switch: remove profile from compose invocation.
-
-## Milestone 5: Registry-driven hot-swap
-Acceptance: tool replacements via registry change only (no code edits) with successful smoke tests; deterministic merge behavior upheld. Kill-switch: lock registry to last known good version and disable reload.
+## Milestones (with acceptance & kill switches)
+1) **Tier 1 registry + compose wiring**
+   - Acceptance: registry + compose alignment validated; tiers table auto-generated.
+   - Kill-switch: disable Tier 1 entries via registry `enabled:false` and stop Tier 1 compose profile.
+2) **Sandbox enforcement**
+   - Acceptance: sandbox profiles mapped to compose services with read-only defaults and healthchecks.
+   - Kill-switch: freeze sandbox profile to `py-slim` and block outbound network.
+3) **Observability & budgets**
+   - Acceptance: env keys wired in orchestrator and collector; sampling and budget caps documented.
+   - Kill-switch: set `AGENT_BUDGET_ENFORCE=block` and `AGENT_TRACE_SAMPLE_RATE=0`.
+4) **Tier 2 opt-in modules**
+   - Acceptance: Tier 2 services behind compose profiles; registry entries default disabled.
+   - Kill-switch: remove Tier 2 profile from compose invocation and keep registry disabled.
+5) **Registry-driven hot-swap**
+   - Acceptance: swapping an integration only requires registry edit + doc regen; no code changes.
+   - Kill-switch: revert to previous registry version and rerun doc generator.

@@ -12,6 +12,7 @@ node_modules
 
 # Python build artifacts
 /build/
+!build/gen_tiers_table.py
 /dist/
 *.egg-info/
 experiment_results_*
