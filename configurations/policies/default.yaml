@@ -1,0 +1,23 @@
+profile: default
+summary: Baseline policy that permits any registered tool with optional metadata.
+allow_unknown_tools: true
+metadata_schema:
+  properties:
+    request_id:
+      type: string
+      description: Optional request correlation identifier.
+    session:
+      type: object
+      description: Free-form session payload retained for logging or tracing.
+  additionalProperties: true
+allowed_tools:
+  example_tool:
+    description: Example schema authors can copy when defining per-tool constraints.
+    input_schema:
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          description: Message the example tool should echo back.
+      additionalProperties: false

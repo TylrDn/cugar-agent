@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List
 
 from .planner import PlanStep
+from .policy import PolicyEnforcer
 from .registry import ToolRegistry
 
 
@@ -26,11 +27,19 @@ class ExecutionResult:
 class Executor:
     """Executes a plan using tools from an isolated registry view."""
 
+    def __init__(self, policy_enforcer: PolicyEnforcer | None = None) -> None:
+        self.policy_enforcer = policy_enforcer
+
     def execute_plan(
         self, plan: Iterable[PlanStep], registry: ToolRegistry, context: ExecutionContext, trace: List[str] | None = None
     ) -> ExecutionResult:
         step_results: List[Dict[str, Any]] = []
+        metadata = context.metadata or {}
+        if self.policy_enforcer is None:
+            self.policy_enforcer = PolicyEnforcer()
+        self.policy_enforcer.validate_metadata(context.profile, metadata)
         for step in plan:
+            self.policy_enforcer.validate_step(context.profile, step, metadata)
             tool_entry = registry.resolve(context.profile, step.tool)
             handler = tool_entry["handler"]
             config = tool_entry.get("config", {})

@@ -1,0 +1,30 @@
+profile: change_me
+summary: Strict template that only allows listed tools and validates every payload.
+allow_unknown_tools: false
+metadata_schema:
+  required:
+    - request_id
+  properties:
+    request_id:
+      type: string
+    user:
+      type: string
+  additionalProperties: false
+allowed_tools:
+  gated_tool:
+    description: Replace with the tool name you want to expose for the profile.
+    metadata_schema:
+      required:
+        - request_id
+      properties:
+        request_id:
+          type: string
+    input_schema:
+      required:
+        - payload
+      properties:
+        payload:
+          type: object
+        dry_run:
+          type: boolean
+      additionalProperties: false

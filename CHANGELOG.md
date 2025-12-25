@@ -21,6 +21,7 @@ All notable changes to the CUGAR Agent project will be documented in this file.
 - PlantUML message flow for documentation
 - Developer-friendly `Makefile` for env, profile, and registry tasks
 - Initial tests in `tests/` for agent flow verification
+- ➕ Added: Profile policy enforcer with schema validation and per-profile templates under `configurations/policies`
 
 ### 🛠️ Changed
 - Standardized folder structure under `src/cuga/`
@@ -34,6 +35,7 @@ All notable changes to the CUGAR Agent project will be documented in this file.
   - `tools.md`
 - Registry merge guide in `docs/registry_merge.md`
 - Security policy in `docs/Security.md`
+- ➕ Added: `docs/policies.md` describing policy authoring and enforcement flow
 
 ### ⚠️ Known Gaps
 - CLI runner may need test scaffolding
