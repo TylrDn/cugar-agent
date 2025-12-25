@@ -70,5 +70,6 @@ All notable changes to the CUGAR Agent project will be documented in this file.
 - 🔁 Changed: Planner now builds multi-step plans with cost/latency optimization, logging, and trace outputs
 - 🔁 Changed: Controller and executor now emit structured audit traces and sanitize handler failures
 - 📚 Documented: Branch cleanup workflow and issue stubs for consolidating Codex branches
+- 🔁 Changed: Reconciled agent lifecycle, tooling, and security documentation with current code enforcement boundaries
 
 ---

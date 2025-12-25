@@ -1,7 +1,7 @@
 
 # 🧠 Agent Lifecycle & Core Modules
 
-This document breaks down the **internal flow of the CUGAR agent system**, including each stage of the agent pipeline: Controller → Planner → Executor → Registry.
+This document breaks down the **internal flow of the CUGAR agent system** as it is implemented today, including each stage of the agent pipeline: Controller → Planner → Executor → Registry.
 
 ---
 
@@ -13,40 +13,43 @@ The CUGAR agent is built as a **modular and composable system**. It is composed 
 User → Controller → Planner → Executor → Tool Registry
 ```
 
-Each component lives in its own module under `src/cuga/agents/`.
+Each component lives in its own module under `src/cuga/agents/` and must respect the universal guardrails defined in [`AGENTS.md`](../AGENTS.md).
+Contributors modifying these components should update the corresponding file in `src/cuga/agents/`, refresh any affected docs in this directory, and add/adjust coverage under `tests/`.
 
 ---
 
 ## 🧭 1. Controller – Orchestrator
 
-**File**: `controller.py`  
-**Class**: `AgentController` (or equivalent)  
+**File**: `controller.py`
+**Class**: `Controller`
 **Responsibilities**:
-- Receives agent `goal` and `profile`
-- Loads and sanitizes the `tool registry` (via sandboxing)
-- Delegates planning to the Planner
-- Delegates execution to the Executor
-- Returns structured output to user/caller
+- Receives agent `goal`, `profile`, and optional `metadata`
+- Validates execution metadata through `PolicyEnforcer`
+- Creates a **profile-sandboxed** view of the registry via `ToolRegistry.sandbox`
+- Delegates planning to the Planner and execution to the Executor
+- Emits an audit event for the controller run and appends planner/executor traces
 
-**Key Method(s)**:
+**Key Method**:
 ```python
-def run_agent(goal: str, profile: str) -> AgentResult:
+def run(goal: str, profile: str, *, metadata: dict[str, Any] | None = None,
+        preferences: PlanningPreferences | None = None) -> ExecutionResult:
     ...
 ```
 
 **Notes**:
-- Controller is the ONLY module allowed to touch both planner and executor directly.
+- The controller only orchestrates already-registered tools; **it does not load YAML fragments or external registries.** Callers must construct and populate `ToolRegistry` beforehand.
+- Audit logging currently writes to the `cuga.agents.audit` logger without automatic redaction; avoid sending secrets in `goal` or `metadata`.
 
 ---
 
 ## 🧠 2. Planner – Task Decomposer
 
-**File**: `planner.py`  
-**Class**: `AgentPlanner`  
+**File**: `planner.py`
+**Class**: `Planner`
 **Responsibilities**:
-- Converts the user's goal into an **ordered list of PlanStep objects**
-- Validates that tools in the registry match step requirements
-- Supports different planning strategies (rule-based, LLM-generated, heuristic)
+- Converts the user's goal into an **ordered list of `PlanStep` objects**
+- Scores tools by `cost` and `latency` metadata stored in the registry and chooses the cheapest subset
+- Emits trace messages describing scoring/selection decisions
 
 **Key Output**:
 ```python
@@ -54,20 +57,27 @@ List[PlanStep]
 ```
 
 **PlanStep** contains:
-- `tool`: the tool name to execute
-- `inputs`: a dict of required arguments
-- `depends_on`: optional dependency chaining
+- `name`: a stable step label
+- `tool`: the tool name to execute (must exist in the sandboxed registry)
+- `input`: a dict of arguments provided directly to the tool handler
+
+**Current limitations**:
+- Planner only considers the **first available profile** in the provided registry sandbox and does not merge or multi-select profiles.
+- There is **no validation** that required input fields exist beyond optional policy checks.
 
 ---
 
 ## 🧰 3. Executor – Step Runner
 
 **File**: `executor.py`  
-**Class**: `AgentExecutor`  
+**Class**: `Executor`
 **Responsibilities**:
 - Runs each `PlanStep` in sequence
-- Validates tool schema before calling
-- Handles failures, retries, and fallback behavior
+- Validates metadata and step input only through `PolicyEnforcer` (no schema enforcement is baked into the executor)
+- Emits audit records per step via the `cuga.agents.audit` logger
+
+**Failure Handling**:
+- Exceptions from a tool handler short-circuit execution and return `ExecutionResult` with the failure payload and trace. **Retries, backoff, and fallbacks are not implemented.**
 
 **Output**:
 ```python
@@ -80,41 +90,47 @@ ExecutionResult {
 
 **Additional**:
 - Results are logged step-by-step
-- Results may include full tool I/O traces (for Langflow or audit)
+- Trace entries include controller/planner messages and executor audit records
 
 ---
 
 ## 🧱 4. Registry – Tool Manager
 
 **File**: `registry.py`  
-**Class**: `ToolRegistry` or equivalent  
+**Class**: `ToolRegistry`
 **Responsibilities**:
-- Loads tools defined by the profile (`YAML` fragments)
+- Stores tool handlers registered in code (name, handler, config, cost, latency, description)
 - Ensures that tools are isolated per profile (sandboxing)
-- Merges tool definitions and enforces conflict detection
+- Merges tool definitions and enforces conflict detection on `name`
 
 **Operations**:
 ```python
-registry = Registry(profile="demo_power")
-tools = registry.list()  # → ["search_web", "query_sql"]
-registry.resolve("search_web")  # → Tool class instance
+registry = ToolRegistry()
+registry.register("demo_power", "search_web", handler=search_handler, cost=0.5, latency=0.5)
+sandboxed = registry.sandbox("demo_power")
+sandboxed.resolve("demo_power", "search_web")  # → handler/config snapshot
 ```
 
 **Design Notes**:
-- Registry is constructed fresh on every agent run.
-- No persistent global state allowed.
+- Registry sandboxes are copies of an already-constructed registry; they **do not pull from disk**.
+- No persistent global state is allowed; callers must register tools per profile before invoking the controller.
+- Conflicting registrations raise `ValueError` immediately during `register` or `merge`.
 
 ---
 
 ## 🧪 Future Extensions
 
-This core is designed to support:
+Current implementation supports:
 
-- ✅ Tool execution via API (OpenAPI/MCP)
-- ✅ Local tools (Python modules)
-- ✅ Multi-agent handoffs (future)
-- 🔒 Human-in-the-loop (planned)
-- 🧠 Memory / replay via Embedded Assets
+- ✅ Local Python callables registered directly on `ToolRegistry`
+- ✅ Cost/latency-aware planning over the registered tools
+- ✅ Policy-aware metadata and input validation via `PolicyEnforcer`
+
+Planned/Not yet implemented (documented for awareness, not as guarantees):
+
+- 🔄 Multi-agent handoffs
+- 🔒 Human-in-the-loop approvals
+- 🧠 Persistent memory / replay
 
 ---
 

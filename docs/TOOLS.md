@@ -1,75 +1,80 @@
 # 🧰 Tool Interfaces & Execution Model
 
-This document outlines the structure, lifecycle, and execution flow of tools in the CUGAR Agent system.
+This document outlines the structure, lifecycle, and execution flow of tools in the CUGAR Agent system **as implemented in `src/cuga/agents`**. It documents what exists today; future-facing ideas must be marked as such.
 
 ---
 
 ## 🧩 What is a Tool?
 
-A **Tool** is a modular, callable capability used by the agent to accomplish steps in a plan.  
-Tools can be:
+A **Tool** is a Python callable registered on a `ToolRegistry` and invoked by the executor for a `PlanStep`.
 
-- Local Python functions
-- Wrapped APIs (e.g., via OpenAPI or MCP)
-- Scripted CLI interfaces
-- Language model endpoints
+**Supported today:**
+- Local Python callables that accept `(input_dict, *, config, context)`
 
-Each tool must declare:
-- Its **name**
-- **Input schema**
-- **Output schema**
-- Optional **metadata** (description, tags, etc.)
+**Metadata stored in the registry:**
+- `name` (per-profile unique)
+- `handler` (callable invoked by the executor)
+- `config` (dict copied before each call)
+- `cost` and `latency` (used by the planner to rank tools)
+- `description` (optional; not used by the planner)
+
+When changing tool behavior, edit the handler implementation (e.g., under `src/` or `mcp-*`), update any related policy files in `configurations/policies`, and add or adjust tests under `tests/` to preserve deterministic behavior.
+
+**Not enforced today:**
+- Input/output schemas, tags, or return type contracts. Any such validation must be performed manually or via `PolicyEnforcer` schemas.
 
 ---
 
 ## 📦 Tool Lifecycle
 
 ```
-YAML Fragment → Registry → PlanStep → Execution → Result
+Registry.register() → Planner builds PlanStep → Executor resolves handler → Execution → Result
 ```
 
-1. **Defined** in profile registry YAML (`configurations/profiles/`)
-2. **Loaded** and sandboxed into `ToolRegistry`
-3. **Matched** to a PlanStep during planning
-4. **Executed** with structured inputs
-5. **Returns** structured result or failure
+1. **Registered** in code on `ToolRegistry` for a specific profile
+2. **Sandboxed** to that profile with `ToolRegistry.sandbox(profile)` before use
+3. **Selected** by the planner based on cost/latency metadata
+4. **Executed** via the executor, which forwards `PlanStep.input` to the handler
+5. **Returns** whatever the handler returns; failures propagate as short-circuit results
 
 ---
 
-## 🧱 Tool YAML Fragment Example
+## 🧱 Registering a Tool in Code
 
-```yaml
-tools:
-  - name: search_web
-    type: local
-    module: tools.web.search
-    description: Search the web using a local engine
-    inputs:
-      query: str
-    outputs:
-      results: List[str]
+```python
+from cuga.agents.registry import ToolRegistry
+
+def search_web_handler(input: dict, *, config: dict, context):
+    query = input.get("query")
+    return {"results": [f"You searched for {query}"]}
+
+registry = ToolRegistry()
+registry.register(
+    "demo_power",
+    "search_web",
+    handler=search_web_handler,
+    config={"engine": "stub"},
+    cost=0.5,
+    latency=0.5,
+    description="Search web demo",
+)
 ```
 
 ---
 
 ## 🧠 Tool Interface (Python)
 
-Each tool should subclass or comply with a base interface like:
+The executor calls handlers with the following signature:
 
 ```python
-class Tool:
-    name: str
-    inputs: Dict[str, type]
-    outputs: Dict[str, type]
-
-    def run(self, **kwargs) -> Dict:
-        ...
+def handler(step_input: dict[str, Any], *, config: dict[str, Any], context: ExecutionContext) -> Any:
+    ...
 ```
 
-**Key Requirements**:
-- Fail loudly if inputs are missing
-- Always return a dict matching the output schema
-- Avoid side effects or global state
+**Expectations (not enforced by the executor):**
+- Fail loudly if required inputs are missing.
+- Avoid side effects or shared mutable state across profiles.
+- Return deterministic objects (e.g., dicts) so downstream consumers can rely on shape.
 
 ---
 
@@ -78,37 +83,49 @@ class Tool:
 ```
 Agent Goal
    ↓
-Planner builds PlanStep → {"tool": "search_web", "inputs": {"query": "open ai"}}
+Planner builds PlanStep → PlanStep(tool="search_web", input={"goal": "open ai", ...})
    ↓
-Executor resolves tool from Registry
+Executor resolves tool from sandboxed registry (profile scoped)
    ↓
-Executor calls: tool.run(**inputs)
+Executor calls: handler(plan_step.input, config=deepcopy(config), context=ExecutionContext(...))
    ↓
-Returns: {"results": [...]}
+Returns handler result or short-circuits on exception
 ```
 
 ---
 
 ## 🔐 Security & Scope
 
-- Tools must **not access secrets directly** (use config injections or scoped APIs)
-- Tools must be **scoped to the profile**
-- Tools must NOT call other tools directly (no nesting)
+- Tools must **not log or return secrets**. The executor does not redact inputs; keep credentials out of `PlanStep.input` and handler outputs.
+- Tool access is **profile-scoped** through `ToolRegistry.sandbox`. Cross-profile access is prevented by registry lookups, but no OS-level sandboxing is provided.
+- Nested tool invocation is discouraged and not enforced; coordinate via planner/executor rather than calling handlers directly.
+- Input/output schema validation is only performed if policies are defined under `configurations/policies` and loaded by `PolicyEnforcer`.
 
 ---
 
 ## 🧪 Testing a Tool
 
-Each tool should have at least one test under `tests/`:
+Each tool should have at least one test under `tests/` that exercises the handler through the executor:
 
 ```python
+from cuga.agents.executor import Executor, ExecutionContext
+from cuga.agents.registry import ToolRegistry
+from cuga.agents.planner import PlanStep
+
 def test_search_web_tool():
-    tool = SearchWebTool()
-    result = tool.run(query="agent architecture")
-    assert "results" in result
+    registry = ToolRegistry()
+    registry.register("demo", "search_web", handler=lambda input, **_: {"results": [input["query"]]})
+    executor = Executor()
+    context = ExecutionContext(profile="demo", metadata={})
+    result = executor.execute_plan(
+        [PlanStep(name="step-1", tool="search_web", input={"query": "agent"})],
+        registry.sandbox("demo"),
+        context,
+    )
+    assert result.output == {"results": ["agent"]}
 ```
 
-Use mock APIs or fixed outputs for deterministic behavior.
+Use mock APIs or fixed outputs for deterministic behavior. Ensure tests avoid leaking secrets in traces or logs.
 
 ---
 
@@ -125,6 +142,8 @@ Use mock APIs or fixed outputs for deterministic behavior.
 ---
 
 ## 🛠️ MCP Tool Reference
+
+These MCP tools live in their respective packages under `mcp-*` and `mcp-foundation`. Use the implementation files as the source of truth for accepted parameters and outputs; this section summarizes intent but does **not** add extra guarantees beyond the code.
 
 ### scrape_tweets
 - **Type:** MCP Tool
