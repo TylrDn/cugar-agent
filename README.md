@@ -7,7 +7,8 @@
 Building a domain-specific enterprise agent from scratch is complex and requires significant effort: agent and tool orchestration, planning logic, safety and alignment policies, evaluation for performance/cost tradeoffs and ongoing improvements. CUGA is a state-of-the-art generalist agent designed with enterprise needs in mind, so you can focus on configuring your domain tools, policies and workflow.
 
 ---
-![CUGAr](docs/images/CUGAr.png)
+
+![CUGAr](docs/image/CUGAr.png)
 
 [![🦉🤗 Try CUGA Live on Hugging Face Spaces](https://img.shields.io/badge/🦉🤗_Try_CUGA_Live_on_Hugging_Face_Spaces-FFD21E?style=for-the-badge)](https://huggingface.co/spaces/ibm-research/cuga-agent)
 
