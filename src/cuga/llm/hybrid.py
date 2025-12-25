@@ -39,5 +39,12 @@ class HybridLLMClient(LLMClient):
         except ValueError as exc:
             if "context" not in str(exc) or not self.policy.fallback_on_context_overflow:
                 raise
-        fallback_response = self.fallback.chat(messages, **kwargs)
-        return self._record(fallback_response, is_local=False)
+        except Exception:
+            # Catch other primary client errors and attempt fallback
+            pass
+
+        try:
+            fallback_response = self.fallback.chat(messages, **kwargs)
+            return self._record(fallback_response, is_local=False)
+        except Exception as exc:  # pragma: no cover
+            raise RuntimeError("LLM fallback client also failed") from exc

@@ -20,6 +20,7 @@ def write_settings(tmp_path: Path, content: str) -> Path:
 
 @pytest.fixture(autouse=True)
 def patch_settings(monkeypatch, tmp_path):
+    monkeypatch.setenv("CUGA_LLM_BACKEND", "httpx")
     settings = write_settings(
         tmp_path,
         """

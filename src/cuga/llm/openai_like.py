@@ -29,14 +29,19 @@ class OpenAILikeClient(LLMClient):
         if self.api_key:
             headers.setdefault("Authorization", f"Bearer {self.api_key}")
         params = {"api-version": self.api_version} if self.api_version else None
+        last_exc: Optional[Exception] = None
         for attempt in range(self.max_retries + 1):
             try:
-                return httpx.post(url, json=payload, headers=headers, params=params, timeout=self.timeout_s)
-            except httpx.TimeoutException as exc:  # pragma: no cover
+                response = httpx.post(url, json=payload, headers=headers, params=params, timeout=self.timeout_s)
+                if response.status_code not in {502, 503, 504} or attempt == self.max_retries:
+                    return response
+                last_exc = RuntimeError(f"Retryable status {response.status_code}")
+            except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadTimeout) as exc:  # pragma: no cover
+                last_exc = exc
                 if attempt == self.max_retries:
                     raise exc
-                time.sleep(min(1.0, 0.1 * (2**attempt)))
-        raise TimeoutError("LLM request failed")
+            time.sleep(min(1.0, 0.1 * (2**attempt)))
+        raise TimeoutError("LLM request failed after retries") from last_exc
 
     def chat(self, messages: Sequence[ChatMessage], **kwargs) -> ChatResponse:
         payload = {"model": kwargs.get("model", self.model), "messages": [m.__dict__ for m in messages], "temperature": kwargs.get("temperature", 0)}

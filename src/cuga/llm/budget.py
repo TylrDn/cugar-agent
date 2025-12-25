@@ -1,4 +1,6 @@
 import json
+import logging
+import threading
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -25,6 +27,8 @@ class BudgetExceeded(Exception):
 
 
 class BudgetManager:
+    _lock = threading.Lock()
+
     def __init__(self, config: BudgetConfig, ledger_path: Path = DEFAULT_LEDGER, pricing: Optional[Dict[str, Dict[str, float]]] = None):
         self.config = config
         self.ledger_path = ledger_path
@@ -49,19 +53,29 @@ class BudgetManager:
         )
 
     def _check(self, incremental: float, today_total: float) -> None:
-        if self.config.run_budget_usd and incremental > self.config.run_budget_usd and self.config.enforce == "block":
-            raise BudgetExceeded("Per-run budget exceeded")
-        if self.config.daily_budget_usd and today_total > self.config.daily_budget_usd and self.config.enforce == "block":
-            raise BudgetExceeded("Daily budget exceeded")
+        if self.config.run_budget_usd and incremental > self.config.run_budget_usd:
+            if self.config.enforce == "block":
+                raise BudgetExceeded("Per-run budget exceeded")
+            logging.getLogger(__name__).warning(
+                "Per-run budget exceeded: %.3f > %.3f", incremental, self.config.run_budget_usd
+            )
+        if self.config.daily_budget_usd and today_total > self.config.daily_budget_usd:
+            if self.config.enforce == "block":
+                raise BudgetExceeded("Daily budget exceeded")
+            logging.getLogger(__name__).warning(
+                "Daily budget exceeded: %.3f > %.3f", today_total, self.config.daily_budget_usd
+            )
 
     def record(self, usage: Usage, model: str, is_local: bool) -> Cost:
-        cost = self._estimate(usage, model, is_local)
-        ledger = self._ledger()
-        today_key = date.today().isoformat()
-        ledger[today_key] = ledger.get(today_key, 0.0) + cost.total
-        self._check(cost.total, ledger[today_key])
-        self._persist(ledger)
-        return cost
+        with BudgetManager._lock:
+            cost = self._estimate(usage, model, is_local)
+            ledger = self._ledger()
+            today_key = date.today().isoformat()
+            current_total = ledger.get(today_key, 0.0)
+            self._check(cost.total, current_total + cost.total)
+            ledger[today_key] = current_total + cost.total
+            self._persist(ledger)
+            return cost
 
 
 def budget_from_env(env: Dict[str, str]) -> BudgetConfig:

@@ -30,6 +30,7 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 - 🔁 Changed: Guardrail verification now centralizes allowlists/keywords and supports env overrides to reduce drift
 - 🔁 Changed: Pytest default discovery now targets `tests/`, with docs/examples suites run through dedicated scripts and build artifacts ignored by default
 - 🔁 Changed: Pytest `norecursedirs` now retains default exclusions (e.g., `.*`, `venv`, `dist`, `*.egg`) to avoid unintended test discovery
+- 🔁 Changed: LLM adapter can run atop LiteLLM by default with hardened retries, fallback error handling, and thread-safe budget warnings
 
 ### Fixed
 - 🐞 Fixed: Hardened `crypto_wallet` parameter parsing and clarified non-production security posture
