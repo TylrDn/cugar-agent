@@ -62,5 +62,6 @@ All notable changes to the CUGAR Agent project will be documented in this file.
 - 🐞 Fixed: `vault_tools` KV store writes use fsynced temp files to preserve atomic persistence safety
 - 🐞 Fixed: `_shared.load_payload` narrows JSON parsing exceptions for clearer diagnostics
 - 🐞 Fixed: `extract_article` fallback parsing now only triggers for expected extraction or network failures
+- 🐞 Fixed: Tool registry now deep-copies resolved entries and profile snapshots to prevent caller mutations from leaking between tools
 
 ---
