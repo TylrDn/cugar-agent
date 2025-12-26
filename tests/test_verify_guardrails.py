@@ -7,7 +7,7 @@ import scripts.verify_guardrails as vg
 
 MINIMAL_ROOT_AGENTS = """# Root
 ## 1. Scope & Precedence
-canonical
+canonical allowlist denylist escalation budget redaction PlannerAgent WorkerAgent CoordinatorAgent
 ## 2. Profile Isolation
 ## 3. Registry Hygiene
 ## 4. Sandbox Expectations
@@ -109,6 +109,46 @@ def test_happy_path_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     errors = vg.run_checks(changed_files=["scripts/verify_guardrails.py", "docs/guide.md"])
 
     assert errors == []
+
+
+def test_missing_guardrail_keywords_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    configure_repo(tmp_path, monkeypatch)
+    write_allowlisted_dirs(tmp_path)
+    write_root_agents(tmp_path, content="""# Root
+## 1. Scope & Precedence
+canonical allowlist
+## 2. Profile Isolation
+## 3. Registry Hygiene
+## 4. Sandbox Expectations
+## 5. Audit / Trace Semantics
+## 6. Documentation Update Rules
+## 7. Verification & No Conflicting Guardrails
+""")
+    write_changelog(tmp_path)
+
+    errors = vg.run_checks(changed_files=["AGENTS.md"])
+
+    assert any("guardrail keywords" in err for err in errors)
+
+
+def test_missing_interface_contracts_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    configure_repo(tmp_path, monkeypatch)
+    write_allowlisted_dirs(tmp_path)
+    write_root_agents(tmp_path, content="""# Root
+## 1. Scope & Precedence
+canonical allowlist denylist escalation budget redaction
+## 2. Profile Isolation
+## 3. Registry Hygiene
+## 4. Sandbox Expectations
+## 5. Audit / Trace Semantics
+## 6. Documentation Update Rules
+## 7. Verification & No Conflicting Guardrails
+""")
+    write_changelog(tmp_path)
+
+    errors = vg.run_checks(changed_files=["AGENTS.md"])
+
+    assert any("planner/worker/coordinator" in err for err in errors)
 
 
 def test_custom_keyword_env_allows_additional_terms(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

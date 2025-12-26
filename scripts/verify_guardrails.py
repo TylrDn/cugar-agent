@@ -50,6 +50,8 @@ REQUIRED_SECTIONS = [
     "## 7. Verification & No Conflicting Guardrails",
 ]
 CANONICAL_INHERIT_PHRASE = "This directory inherits from root `AGENTS.md` (canonical). Conflicts resolve to root."
+REQUIRED_GUARDRAIL_KEYWORDS = ["allowlist", "denylist", "escalation", "redaction", "budget"]
+REQUIRED_INTERFACES = ["PlannerAgent", "WorkerAgent", "CoordinatorAgent"]
 SAFE_GIT_REF_PATTERN = re.compile(r"^(?!-)[A-Za-z0-9._/\-]+$")
 
 
@@ -95,6 +97,32 @@ def ensure_root_agents() -> List[str]:
     if "canonical" not in content.lower():
         errors.append("Root AGENTS.md must declare itself canonical")
     return errors
+
+
+def ensure_guardrail_keywords() -> List[str]:
+    if not ROOT_AGENTS.exists():
+        return []
+    content = read_text(ROOT_AGENTS).lower()
+    missing = [kw for kw in REQUIRED_GUARDRAIL_KEYWORDS if kw.lower() not in content]
+    if not missing:
+        return []
+    return [
+        "Root AGENTS.md missing required guardrail keywords: "
+        + ", ".join(sorted(missing))
+    ]
+
+
+def ensure_interface_contracts() -> List[str]:
+    if not ROOT_AGENTS.exists():
+        return []
+    content = read_text(ROOT_AGENTS)
+    missing = [iface for iface in REQUIRED_INTERFACES if iface not in content]
+    if not missing:
+        return []
+    return [
+        "Root AGENTS.md must describe planner/worker/coordinator interfaces; missing: "
+        + ", ".join(sorted(missing))
+    ]
 
 
 def _has_inherit_marker(path: Path) -> bool:
@@ -215,6 +243,8 @@ def discover_changed_files(base: Optional[str]) -> List[str]:
 def run_checks(base: Optional[str] = None, changed_files: Optional[Sequence[str]] = None) -> List[str]:
     errors: List[str] = []
     errors.extend(ensure_root_agents())
+    errors.extend(ensure_guardrail_keywords())
+    errors.extend(ensure_interface_contracts())
     errors.extend(ensure_routing_markers())
     errors.extend(ensure_no_conflicting_canonical())
     files = list(changed_files) if changed_files is not None else discover_changed_files(base)

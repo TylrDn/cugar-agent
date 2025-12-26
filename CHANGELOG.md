@@ -27,6 +27,7 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 - ➕ Added: Env-gated MCP registry loader/runner wiring with sample `registry.yaml` and planner/executor integration
 - ➕ Added: Agent UI intent preview, invocation timeline, and state badge for clearer tool legibility
 - ➕ Added: Expanded guardrail verification script (`scripts/verify_guardrails.py`), inheritance markers, and CI enforcement
+- ➕ Added: Guardrail verifier coverage for allowlist/denylist, budget, escalation, and redaction keywords plus planner/worker/coordinator contracts
 - ➕ Added: Dual-mode LLM adapter layer with hybrid routing, budget guardrails, and config/env precedence
 - ➕ Added: Architecture/registry observability documentation set (overview, registry, tiers, sandboxes, compose, ADR, glossary)
 - ➕ Added: MCP v2 registry slice with immutable snapshot models, YAML loader, and offline contract tests
@@ -42,6 +43,7 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 - 🔁 Changed: Guardrail routing updated so root `AGENTS.md` remains canonical with per-directory inherit markers
 - 🔁 Changed: Guardrail verification now centralizes allowlists/keywords and supports env overrides to reduce drift
 - 🔁 Changed: Guardrail verification now tracks `config/` with inheritance markers to cover Hydra registry defaults
+- 🔁 Changed: Root `AGENTS.md` reorganized to align Tier 1 defaults with registry tool swaps, sandbox pinning, and budget/redaction guardrails
 - 🔁 Changed: Pytest default discovery now targets `tests/`, with docs/examples suites run through dedicated scripts and build artifacts ignored by default
 - 🔁 Changed: Pytest `norecursedirs` now retains default exclusions (e.g., `.*`, `venv`, `dist`, `*.egg`) to avoid unintended test discovery
 - 🔁 Changed: LLM adapter can run atop LiteLLM by default with hardened retries, fallback error handling, and thread-safe budget warnings
