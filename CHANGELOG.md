@@ -6,6 +6,8 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 ---
 
 ## vNext
+- Added guardrail enforcement utilities, sandbox allowlist, and coverage gating to 80%.
+- Introduced LangGraph-style planner/coordinator stack with trace propagation, vector memory retention, and FastAPI deployment surface.
 
 ### Added
 - ➕ Added: Deterministic hashing embedder and pluggable vector backends with local search fallback.
