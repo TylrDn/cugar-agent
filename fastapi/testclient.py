@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Dict
+from typing import Any, AsyncIterator, Dict
 
 from . import HTTPException
 
@@ -34,6 +34,12 @@ class TestClient:
             asyncio.set_event_loop(loop)
         return loop.run_until_complete(coro)
 
+    async def _collect_stream(self, stream: AsyncIterator[bytes]):
+        chunks = []
+        async for chunk in stream:
+            chunks.append(chunk)
+        return chunks
+
     def get(self, path: str, headers: Dict[str, str] | None = None):
         headers = headers or {}
         try:
@@ -49,6 +55,7 @@ class TestClient:
         except HTTPException as exc:
             return _Response(exc.status_code, json_data={"detail": exc.detail})
         if hasattr(result, "iter_bytes"):
-            chunks = self._run(result.iter_bytes())
+            stream = result.iter_bytes()
+            chunks = self._run(self._collect_stream(stream))
             return _Response(getattr(result, "status_code", 200), content=b"".join(chunks), headers=result.headers)
         return _Response(getattr(result, "status_code", 200), json_data=getattr(result, "content", result), headers=getattr(result, "headers", {}))
