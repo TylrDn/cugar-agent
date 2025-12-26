@@ -17,8 +17,6 @@ class StreamingResponse:
         self.media_type = media_type
         self.headers: Dict[str, str] = {}
 
-    async def iter_bytes(self):
-        collected = []
+    async def iter_bytes(self) -> AsyncIterator[bytes]:
         async for chunk in self.iterator:
-            collected.append(chunk)
-        return collected
+            yield chunk
