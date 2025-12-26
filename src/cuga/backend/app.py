@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from cuga.planner.core import Planner
@@ -25,7 +26,7 @@ async def budget_guard(request, call_next):
         raise HTTPException(status_code=500, detail="agent token not configured")
 
     token = request.headers.get("X-Token")
-    if token != expected_token:
+    if not secrets.compare_digest(token or "", expected_token):
         raise HTTPException(status_code=401, detail="unauthorized")
     ceiling = int(os.environ.get("AGENT_BUDGET_CEILING", "100"))
     spent = int(request.headers.get("X-Budget-Spent", "0"))
