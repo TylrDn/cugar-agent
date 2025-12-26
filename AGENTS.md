@@ -18,6 +18,9 @@
 - Registry entries MUST declare sandbox profile (`py/node slim|full`, `orchestrator`), read-only mounts, and `/workdir` pinning for exec sandboxes.
 - Compose mounts/env for Tier 1 entries MUST match `docs/mcp/registry.yaml` and include health checks; Tier 2 entries default to `enabled: false`.
 - Env keys MUST wire observability (`OTEL_*`, LangFuse/LangSmith) and budget enforcement (`AGENT_*`) with `warn|block` policies spelled out.
+  Current policy: allowlist `cuga.modular.tools.*` only; denylist any external module imports; env allowlist `AGENT_*`, `OTEL_*`,
+  `LANGFUSE_*`, `OPENINFERENCE_*`, `TRACELOOP_*`. Budget ceilings default `AGENT_BUDGET_CEILING=100`, escalation max `AGENT_ESCALATION_MAX=2`,
+  and redaction removes values matching `secret`, `token`, or `password` keys before logging.
 
 ## 4. Sandbox Expectations
 - Tool handler signature: `(inputs: Dict[str, Any], context: Dict[str, Any]) -> Any`; context includes `profile`, `trace_id`.

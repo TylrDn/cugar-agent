@@ -28,6 +28,8 @@ bash src/scripts/run_tests.sh
 bash src/scripts/run_tests.sh unit_tests
 ```
 
+CI runs `pytest --cov=src --cov-report=term-missing --cov-fail-under=80` and the stability harness `python src/scripts/run_stability_tests.py` to guard planner/registry/guardrail regressions.
+
 If you need memory-backed tests, enable the memory dependency group before running them (the helper does this automatically for the memory suites it triggers).
 
 ## Tips

@@ -130,3 +130,8 @@ When adding a new agent role or capability:
 - **Registry merging**: `docs/REGISTRY_MERGE.md`.
 - **Agent guardrails**: root `AGENTS.md`.
 - **Existing architecture summary**: `ARCHITECTURE.md` and `docs/architecture/` for broader platform views.
+
+## Vector memory tunables
+- Default connector: `cuga.memory.vector.VectorMemory` with async `batch_upsert` and `similarity_search` primitives.
+- Retention: configure `ttl_seconds` for time-based eviction and `max_items` for bounded windows; eviction runs on every write/read.
+- Batching: callers should group writes by interaction to preserve ordering and reduce contention; tests cover stress retention paths.
