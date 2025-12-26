@@ -17,11 +17,15 @@ registry = Registry(registry_path)
 
 app = FastAPI(title="Cuga Backend")
 
+EXPECTED_TOKEN = os.environ.get("AGENT_TOKEN")
+if not EXPECTED_TOKEN:
+    raise RuntimeError("AGENT_TOKEN not configured")
+
 
 @app.middleware("http")
 async def budget_guard(request, call_next):
     token = request.headers.get("X-Token")
-    if token != os.environ.get("AGENT_TOKEN", "dev-token"):
+    if token != EXPECTED_TOKEN:
         raise HTTPException(status_code=401, detail="unauthorized")
     ceiling = int(os.environ.get("AGENT_BUDGET_CEILING", "100"))
     spent = int(request.headers.get("X-Budget-Spent", "0"))
