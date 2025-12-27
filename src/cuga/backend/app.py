@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import secrets
 from fastapi import FastAPI, Header, HTTPException
@@ -16,17 +17,35 @@ planner = Planner()
 coordinator = Coordinator([Worker("w1"), Worker("w2")])
 registry = Registry(registry_path)
 
+
+def get_expected_token() -> str:
+    token = os.environ.get("AGENT_TOKEN")
+    if token is None:
+        raise RuntimeError("AGENT_TOKEN not configured")
+    return token
+
+
+def get_expected_token_hash() -> bytes:
+    return hashlib.sha256(get_expected_token().encode()).digest()
+
 app = FastAPI(title="Cuga Backend")
+
+
+@app.on_event("startup")
+def validate_agent_token():
+    get_expected_token()
 
 
 @app.middleware("http")
 async def budget_guard(request, call_next):
-    expected_token = os.environ.get("AGENT_TOKEN")
-    if not expected_token:
-        raise HTTPException(status_code=500, detail="agent token not configured")
+    try:
+        expected_token_hash = get_expected_token_hash()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
     token = request.headers.get("X-Token")
-    if not secrets.compare_digest(token or "", expected_token):
+    token_hash = hashlib.sha256((token or "").encode()).digest()
+    if not secrets.compare_digest(token_hash, expected_token_hash):
         raise HTTPException(status_code=401, detail="unauthorized")
     ceiling = int(os.environ.get("AGENT_BUDGET_CEILING", "100"))
     spent = int(request.headers.get("X-Budget-Spent", "0"))
