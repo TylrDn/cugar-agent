@@ -70,6 +70,7 @@ This changelog follows the guidance from [Keep a Changelog](https://keepachangel
 - 📚 Rewrote README/USAGE/AGENTS/CONTRIBUTING/SECURITY with 2025 agent-stack guidance and integration steps
 - 📚 Documented: Branch cleanup workflow and issue stubs for consolidating Codex branches
 - 📚 Documented: Root guardrails, audit expectations, and routing table for guardrail updates
+- 📚 Documented: Guardrail verification and change-management checklist in AGENTS/README plus alignment reminder in `todo1.md`
 - 📚 Documented: Hydra-based registry composition (env overrides, enabled-only duplicate detection) and linked MCP integration guidance
 - 📚 Documented: Refined canonical `AGENTS.md` with quick checklist, local template, and cross-links to policy docs
 - 📚 Documented: Architecture topology (controller/planner/tool bus), orchestration modes, and observability enhancements

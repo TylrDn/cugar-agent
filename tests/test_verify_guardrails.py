@@ -257,3 +257,36 @@ def test_env_overrides_respected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 
     assert any("custom" in err for err in errors)
     assert any("CHANGELOG" in err for err in errors)
+
+
+def test_guardrail_config_from_env_with_empty_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GUARDRAILS_ALLOWLISTED_DIRS", "")
+    monkeypatch.setenv("GUARDRAILS_GUARDED_PREFIXES", "")
+    monkeypatch.setenv("GUARDRAILS_VNEXT_KEYWORDS", "")
+
+    config = vg.GuardrailConfig.from_env()
+
+    assert "src" in config.allowlisted_dirs
+    assert "docs" in config.allowlisted_dirs
+    assert "guardrail" in config.vnext_keywords
+    assert "registry" in config.vnext_keywords
+
+
+def test_guardrail_config_from_env_with_malformed_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GUARDRAILS_ALLOWLISTED_DIRS", "custom, dirs ; another | final ")
+    monkeypatch.setenv("GUARDRAILS_GUARDED_PREFIXES", "prefix1,, prefix2 ,, ,")
+
+    config = vg.GuardrailConfig.from_env()
+
+    assert config.allowlisted_dirs == ("custom", "dirs", "another", "final")
+    assert config.guarded_prefixes[:2] == ("prefix1", "prefix2")
+
+
+def test_guardrail_config_from_env_partial_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GUARDRAILS_VNEXT_KEYWORDS", "compliance")
+
+    config = vg.GuardrailConfig.from_env()
+
+    assert config.vnext_keywords == ("compliance",)
+    assert "docs" in config.allowlisted_dirs
+    assert "registry" in config.guarded_prefixes

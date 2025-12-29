@@ -67,6 +67,11 @@ uv run python examples/run_langgraph_demo.py --goal "triage a support ticket"
 - `configs/` holds YAML/TOML profiles for agents, LangGraph graphs, memory backends, and observability.
 - `registry.yaml` and `config/` house MCP/registry defaults; use `scripts/verify_guardrails.py` before shipping changes.
 
+## Guardrails & Change Management
+- Review [AGENTS.md](AGENTS.md) before altering planners, tools, or registry entries; it is the single source of truth for allowlists, sandbox expectations, budgets, and redaction.
+- After touching guardrails or registry fragments, run `python scripts/verify_guardrails.py` and update `CHANGELOG.md` under `## vNext` plus `todo1.md` with any new follow-ups.
+- Keep production checklists ([PRODUCTION_READINESS.md](PRODUCTION_READINESS.md)) and security docs in sync with guardrail adjustments so downstream users understand the default policies and where to override them.
+
 ## Agent Types
 - **Planner**: ReAct or Plan-and-Execute; emits steps with policy-aware cost/latency hints.
 - **Tool Executor**: LCEL/LangChain tools, MCP adapters, HTTP/OpenAPI runners with sandboxed registry resolution.

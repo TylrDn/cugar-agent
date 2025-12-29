@@ -37,9 +37,15 @@
 - Config changes MUST update tests and docs in the same PR; env parsing MUST clamp `PLANNER_MAX_STEPS` to 1..50 and `MODEL_TEMPERATURE` to 0..2 with warnings on invalid values.
 - Edit `AGENTS.md` first when modifying guardrails; update `CHANGELOG.md` (`## vNext`) with summary and keep migration notes current for breaking changes.
 - Document registry and sandbox guardrail adjustments in `CHANGELOG.md` alongside updated tests.
+- Keep contributor-facing docs synchronized with guardrail expectations: refresh README/PRODUCTION readiness notes and the repo to-do tracker (`todo1.md`) when altering registry allowlists, budgets, or redaction policies. Run `python scripts/verify_guardrails.py` after every guardrail or registry edit and capture any new follow-ups in the to-do list.
 
 ## 7. Verification & No Conflicting Guardrails
 - Tests MUST assert planner does not return all tools blindly; vector scores correlate with similarity and are ordered.
 - Round-robin coordinator scheduling MUST be verified under concurrent calls; planner/worker/coordinator interface guardrails MUST be covered by automated checks.
 - Import guardrails MUST be enforced (reject non-`cuga.modular.tools.*`); env parsing tests MUST cover invalid/edge values and fallback behavior.
 - Any change violating or adjusting guardrails MUST update this file plus corresponding tests in the same PR; non-root `AGENTS.md` MUST only declare inheritance, never canonical status.
+
+## 8. Contributor Checklist (TL;DR)
+- Read this file first and confirm registry/sandbox edits follow the allowlist/denylist rules.
+- Keep docs (README, PRODUCTION readiness, security/policies) and `todo1.md` aligned with any guardrail or registry change.
+- Run `python scripts/verify_guardrails.py` and the stability harness before merging; add new tests when planner/worker/coordinator interfaces evolve.

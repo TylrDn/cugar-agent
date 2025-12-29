@@ -4,6 +4,7 @@
 - Align root `AGENTS.md` guardrails with current tool allowlist/denylist, escalation ceilings, redaction rules, and budget caps before enabling Tier 1 defaults.
 - Add automated guardrail verification for any new planner/worker/coordinator interfaces and update tests accordingly.
 - Document any adjustments to guardrails in `CHANGELOG.md` under `## vNext` alongside test updates.
+- Keep README, PRODUCTION readiness notes, and security docs synchronized with guardrail and registry expectations; capture new follow-ups in this list whenever guardrails shift.
 
 ## Registry & Sandbox Enablement
 - Complete Tier 1 registry composition so `docs/mcp/registry.yaml` matches compose service mounts/env with health checks.
@@ -17,6 +18,7 @@
 - Ensure coordinator uses thread-safe round-robin worker selection with preserved plan ordering under concurrency.
 - Harden tool import guardrails to restrict dynamic imports to `cuga.modular.tools.*` and enforce parameter declarations with explicit IO expectations.
 - Expand tool selection logic to avoid blindly selecting all tools and to rank candidates by description/name similarity; verify via tests.
+- Standardize a lightweight developer checklist (in README/AGENTS) for planner/worker/registry changes that references guardrail verification and required tests.
 
 ## Memory, RAG, and Embeddings
 - Harden vector memory connectors with async batching, retention policies, and backend validation at initialization.
@@ -27,6 +29,7 @@
 - Ship default Langfuse/OpenInference dashboards and Traceloop spans for registry, planning, and execution paths.
 - Emit structured, PII-free logs with secret redaction and full `trace_id` propagation across planner/worker/coordinator, CLI, and tools.
 - Instrument events for plan creation, tool selection, execution start/stop, backend connections, errors, and budget decisions.
+- Add guardrail verification to observability dashboards (or runbooks) so operators can track budget ceiling/escalation events and registry allowlist violations.
 
 ## Deployment & API Profiles
 - Add FastAPI LangServe-style deployment profile for hosted APIs with secure defaults and budget controls.
