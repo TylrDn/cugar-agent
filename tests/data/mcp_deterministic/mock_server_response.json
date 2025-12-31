@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "responses": {
+    "mcp.github:list_repos:octocat": {
+      "status_code": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-ratelimit-remaining": "4999"
+      },
+      "body": {
+        "repos": [
+          {
+            "name": "hello-world",
+            "full_name": "octocat/hello-world",
+            "description": "My first repository",
+            "private": false,
+            "stars": 100,
+            "forks": 50,
+            "updated_at": "2024-12-31T12:00:00Z"
+          },
+          {
+            "name": "spoon-knife",
+            "full_name": "octocat/spoon-knife",
+            "description": "This repo is for demonstration purposes only",
+            "private": false,
+            "stars": 200,
+            "forks": 75,
+            "updated_at": "2024-12-30T10:00:00Z"
+          }
+        ]
+      }
+    },
+    "mcp.fs:read:/workspace/README.md": {
+      "status_code": 200,
+      "headers": {
+        "content-type": "text/plain"
+      },
+      "body": {
+        "content": "# CUGA Agent\n\nMCP-native enterprise agent with tier-based tool management.\n",
+        "size": 70,
+        "encoding": "utf-8"
+      }
+    }
+  }
+}

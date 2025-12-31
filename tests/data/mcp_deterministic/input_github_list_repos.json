@@ -1,0 +1,14 @@
+{
+  "tool_id": "mcp.github",
+  "inputs": {
+    "action": "list_repos",
+    "user": "octocat",
+    "sort": "updated",
+    "per_page": 10
+  },
+  "context": {
+    "trace_id": "test-trace-001",
+    "user_id": "test-user",
+    "timestamp": "2025-01-01T00:00:00Z"
+  }
+}

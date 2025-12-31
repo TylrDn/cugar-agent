@@ -1,0 +1,29 @@
+{
+  "status": "success",
+  "data": {
+    "repos": [
+      {
+        "name": "hello-world",
+        "full_name": "octocat/hello-world",
+        "description": "My first repository",
+        "private": false,
+        "stars": 100,
+        "forks": 50
+      },
+      {
+        "name": "spoon-knife",
+        "full_name": "octocat/spoon-knife",
+        "description": "This repo is for demonstration purposes only",
+        "private": false,
+        "stars": 200,
+        "forks": 75
+      }
+    ],
+    "total_count": 2
+  },
+  "metadata": {
+    "duration_ms": 150.5,
+    "cost": 0.01,
+    "trace_id": "test-trace-001"
+  }
+}
