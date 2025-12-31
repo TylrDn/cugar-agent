@@ -1,0 +1,38 @@
+{
+  "name": "MCP GitHub Demo Flow",
+  "description": "Demo flow showing MCP integration with GitHub tools",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "mcp_client_1",
+      "type": "MCPClient",
+      "position": {"x": 100, "y": 100},
+      "data": {
+        "mcp_servers": "docs/mcp/registry.yaml",
+        "allowed_tiers": [1],
+        "deny_by_default": true
+      }
+    },
+    {
+      "id": "github_tool_1",
+      "type": "ToolExecutor",
+      "position": {"x": 300, "y": 100},
+      "data": {
+        "tool_id": "mcp.github",
+        "input": {
+          "action": "list_repos",
+          "user": "TylrDn"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_1",
+      "source": "mcp_client_1",
+      "target": "github_tool_1",
+      "sourceHandle": "tools",
+      "targetHandle": "toolbox"
+    }
+  ]
+}

@@ -258,8 +258,8 @@ def normalize_output(output: Any) -> Any:
     if isinstance(output, dict):
         normalized = {}
         for key, value in sorted(output.items()):
-            # Skip timestamp fields for determinism
-            if key.lower() in {"timestamp", "created_at", "updated_at", "time"}:
+            # Skip timestamp fields for determinism (including last_updated)
+            if key.lower() in {"timestamp", "created_at", "updated_at", "time", "last_updated"}:
                 continue
             normalized[key] = normalize_output(value)
         return normalized
