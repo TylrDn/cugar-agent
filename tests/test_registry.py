@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.cuga.tools.mcp_registry import (
+from cuga.tools.mcp_registry import (
     MCPRegistryLoader,
     MCPToolManifest,
     UnregisteredToolError,
@@ -223,7 +223,7 @@ def test_invalid_registry_format(tmp_path):
     loader = MCPRegistryLoader(registry_path=invalid_registry)
     
     # YAML that parses to non-dict should raise error
-    from src.cuga.tools.mcp_registry import MCPRegistryError
+    from cuga.tools.mcp_registry import MCPRegistryError
     with pytest.raises(MCPRegistryError):
         loader.load()
 

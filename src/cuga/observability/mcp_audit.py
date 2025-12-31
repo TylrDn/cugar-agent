@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
@@ -89,7 +89,7 @@ class MCPAuditLogger:
             cost: Estimated cost of the operation
             metadata: Additional metadata (trace_id, user_id, etc.)
         """
-        timestamp = datetime.utcnow().isoformat() + "Z"
+        timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         
         entry = {
             "timestamp": timestamp,
@@ -128,7 +128,7 @@ class MCPAuditLogger:
             data: Event data
             metadata: Additional metadata
         """
-        timestamp = datetime.utcnow().isoformat() + "Z"
+        timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         
         entry = {
             "timestamp": timestamp,
