@@ -1,0 +1,152 @@
+{
+  "name": "MCP GitHub Integration Demo",
+  "description": "Demo flow showing MCP tool integration with GitHub tools",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "mcp_client_1",
+      "type": "MCPClientComponent",
+      "position": {
+        "x": 100,
+        "y": 100
+      },
+      "data": {
+        "label": "MCP Client",
+        "component": "MCPClientComponent",
+        "inputs": {
+          "registry_path": "",
+          "allowed_tiers": "1",
+          "tool_ids": "mcp.github,mcp.fs,mcp.git",
+          "enable_guards": true,
+          "enable_audit": true
+        },
+        "outputs": {
+          "tools": "tools_list",
+          "toolbox": "toolbox_instance"
+        }
+      }
+    },
+    {
+      "id": "tool_executor_1",
+      "type": "MCPToolExecutorComponent",
+      "position": {
+        "x": 400,
+        "y": 100
+      },
+      "data": {
+        "label": "Execute GitHub List Repos",
+        "component": "MCPToolExecutorComponent",
+        "inputs": {
+          "toolbox": "{{mcp_client_1.toolbox}}",
+          "tool_id": "mcp.github",
+          "inputs": {
+            "action": "list_repos",
+            "user": "octocat"
+          },
+          "context": {
+            "trace_id": "demo-flow-001",
+            "user_id": "demo-user"
+          }
+        },
+        "outputs": {
+          "result": "github_result",
+          "status": "execution_status"
+        }
+      }
+    },
+    {
+      "id": "tool_executor_2",
+      "type": "MCPToolExecutorComponent",
+      "position": {
+        "x": 400,
+        "y": 300
+      },
+      "data": {
+        "label": "Execute FS Read",
+        "component": "MCPToolExecutorComponent",
+        "inputs": {
+          "toolbox": "{{mcp_client_1.toolbox}}",
+          "tool_id": "mcp.fs",
+          "inputs": {
+            "action": "read",
+            "path": "/workspace/README.md"
+          },
+          "context": {
+            "trace_id": "demo-flow-002",
+            "user_id": "demo-user"
+          }
+        },
+        "outputs": {
+          "result": "fs_result",
+          "status": "execution_status"
+        }
+      }
+    },
+    {
+      "id": "result_aggregator",
+      "type": "OutputComponent",
+      "position": {
+        "x": 700,
+        "y": 200
+      },
+      "data": {
+        "label": "Aggregate Results",
+        "component": "OutputComponent",
+        "inputs": {
+          "github_data": "{{tool_executor_1.result}}",
+          "fs_data": "{{tool_executor_2.result}}"
+        },
+        "outputs": {
+          "combined_result": "final_output"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "mcp_client_1",
+      "sourceHandle": "toolbox",
+      "target": "tool_executor_1",
+      "targetHandle": "toolbox"
+    },
+    {
+      "id": "e2",
+      "source": "mcp_client_1",
+      "sourceHandle": "toolbox",
+      "target": "tool_executor_2",
+      "targetHandle": "toolbox"
+    },
+    {
+      "id": "e3",
+      "source": "tool_executor_1",
+      "sourceHandle": "result",
+      "target": "result_aggregator",
+      "targetHandle": "github_data"
+    },
+    {
+      "id": "e4",
+      "source": "tool_executor_2",
+      "sourceHandle": "result",
+      "target": "result_aggregator",
+      "targetHandle": "fs_data"
+    }
+  ],
+  "metadata": {
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z",
+    "author": "CUGA Team",
+    "tags": [
+      "mcp",
+      "github",
+      "filesystem",
+      "demo"
+    ],
+    "description_long": "This demo flow showcases the MCP Client and Tool Executor components working together to interact with GitHub and filesystem tools. It demonstrates tier-based filtering, guard enforcement, and audit logging capabilities.",
+    "use_cases": [
+      "GitHub repository management",
+      "Filesystem operations",
+      "Multi-tool orchestration"
+    ]
+  }
+}

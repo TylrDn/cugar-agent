@@ -284,6 +284,20 @@ class MCPToolbox:
         
         return sorted(self._tools.keys())
     
+    def has_tool(self, tool_id: str) -> bool:
+        """Check if a tool is available in the toolbox.
+        
+        Args:
+            tool_id: The tool identifier
+            
+        Returns:
+            True if tool is available
+        """
+        if not self._loaded:
+            self.load_tools()
+        
+        return tool_id in self._tools
+    
     def get_tool_manifest(self, tool_id: str) -> MCPToolManifest:
         """Get the manifest for a specific tool.
         
