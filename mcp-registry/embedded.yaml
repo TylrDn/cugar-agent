@@ -1,0 +1,125 @@
+# MCP Registry - Embedded Servers
+#
+# This file defines MCP servers that are embedded within the cugar-agent
+# repository and loaded directly as Python modules.
+
+servers:
+  # Example: Embedded filesystem server
+  - name: embedded-filesystem
+    transport: embedded
+    module: cuga.mcp_servers.filesystem.server
+    path: src/cuga/mcp_servers/filesystem
+    description: "Embedded filesystem operations server"
+    capabilities:
+      - action: read
+        auth: none
+        description: "Read files from sandboxed workspace"
+      - action: write
+        auth: none
+        description: "Write files to sandboxed workspace"
+      - action: list
+        auth: none
+        description: "List directory contents"
+    permission_scope: read-write
+    sandbox:
+      enabled: true
+      allowed_paths:
+        - "./cuga_workspace"
+      forbidden_paths:
+        - "/etc"
+        - "/usr"
+        - "/var"
+    timeout: 30
+
+  # Example: Embedded calculator server
+  - name: embedded-calculator
+    transport: embedded
+    module: cuga.mcp_servers.calculator.server
+    path: src/cuga/mcp_servers/calculator
+    description: "Embedded mathematical operations server"
+    capabilities:
+      - action: compute
+        auth: none
+        description: "Basic arithmetic operations"
+      - action: evaluate
+        auth: none
+        description: "Evaluate mathematical expressions"
+    permission_scope: read-only
+    sandbox:
+      enabled: true
+      allowed_operations:
+        - "arithmetic"
+        - "comparison"
+      forbidden_operations:
+        - "exec"
+        - "eval"
+    timeout: 10
+
+  # Example: Embedded data transformation server
+  - name: embedded-transformer
+    transport: embedded
+    module: cuga.mcp_servers.transformer.server
+    path: src/cuga/mcp_servers/transformer
+    description: "Embedded data transformation server"
+    capabilities:
+      - action: transform
+        auth: none
+        description: "Transform data between formats (JSON, CSV, XML)"
+      - action: validate
+        auth: none
+        description: "Validate data against schemas"
+    permission_scope: read-only
+    sandbox:
+      enabled: true
+      max_input_size: 10485760  # 10MB
+      allowed_formats:
+        - "json"
+        - "csv"
+        - "xml"
+        - "yaml"
+    timeout: 20
+
+  # Example: Embedded search/index server
+  - name: embedded-search
+    transport: embedded
+    module: cuga.mcp_servers.search.server
+    path: src/cuga/mcp_servers/search
+    description: "Embedded document search and indexing server"
+    capabilities:
+      - action: search
+        auth: none
+        description: "Full-text search across indexed documents"
+      - action: index
+        auth: none
+        description: "Index documents for search"
+      - action: analyze
+        auth: none
+        description: "Analyze text and extract metadata"
+    permission_scope: read-write
+    sandbox:
+      enabled: true
+      max_index_size: 104857600  # 100MB
+      allowed_paths:
+        - "./cuga_workspace/documents"
+    timeout: 30
+
+  # Example: Embedded API client server
+  - name: embedded-api-client
+    transport: embedded
+    module: cuga.mcp_servers.api_client.server
+    path: src/cuga/mcp_servers/api_client
+    description: "Embedded API client for external services"
+    capabilities:
+      - action: request
+        auth: token-required
+        description: "Make HTTP requests to allowed APIs"
+    permission_scope: read-only
+    sandbox:
+      enabled: true
+      allowed_domains:
+        - "api.github.com"
+        - "api.openai.com"
+        - "*.example.com"
+      rate_limit:
+        requests_per_minute: 60
+    timeout: 45

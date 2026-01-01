@@ -1,0 +1,74 @@
+# MCP Registry - HTTP Transport Servers
+#
+# This file defines remote MCP servers accessible via HTTP/HTTPS transport.
+# These servers typically run on external platforms (e.g., Pipedream, cloud services).
+
+servers:
+  # Example: Pipedream-hosted MCP server
+  - name: pipedream-example
+    transport: http
+    url: https://example.pipedream.net/mcp
+    description: "Example Pipedream-hosted MCP server"
+    capabilities:
+      - action: read
+        auth: token-required
+        description: "Read data from external service"
+      - action: write
+        auth: token-required
+        description: "Write data to external service"
+    permission_scope: read-write
+    timeout: 30
+    retry_policy:
+      max_retries: 3
+      backoff_strategy: exponential
+    health_check:
+      enabled: true
+      interval: 60
+      endpoint: /health
+    auth:
+      type: bearer
+      token_env: MCP_AUTH_TOKEN
+
+  # Example: Weather service via HTTP
+  - name: weather-api
+    transport: http
+    url: https://api.weather.example.com/mcp
+    description: "Weather data MCP service"
+    capabilities:
+      - action: read
+        auth: token-required
+        description: "Get weather forecasts and current conditions"
+    permission_scope: read-only
+    timeout: 15
+    retry_policy:
+      max_retries: 2
+      backoff_strategy: linear
+    auth:
+      type: bearer
+      token_env: WEATHER_API_TOKEN
+
+  # Example: CRM integration via HTTP
+  - name: crm-service
+    transport: http
+    url: https://crm.example.com/api/mcp
+    description: "CRM system MCP integration"
+    capabilities:
+      - action: read
+        auth: token-required
+        description: "Query customer data"
+      - action: write
+        auth: token-required
+        description: "Update customer records"
+      - action: search
+        auth: token-required
+        description: "Search across customer database"
+    permission_scope: read-write
+    timeout: 45
+    retry_policy:
+      max_retries: 3
+      backoff_strategy: exponential
+    rate_limit:
+      requests_per_minute: 100
+    auth:
+      type: bearer
+      token_env: CRM_API_TOKEN

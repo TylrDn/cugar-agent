@@ -1,0 +1,116 @@
+# MCP Registry - Process Transport Servers
+#
+# This file defines local MCP servers that are launched as subprocesses
+# and communicate via stdin/stdout using JSON-RPC protocol.
+
+servers:
+  # Example: Filesystem MCP server
+  - name: filesystem
+    transport: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-filesystem"
+      - "./cuga_workspace"
+    description: "Local file system operations via MCP"
+    capabilities:
+      - action: read
+        auth: none
+        description: "Read files from workspace"
+      - action: write
+        auth: none
+        description: "Write files to workspace"
+      - action: list
+        auth: none
+        description: "List directory contents"
+    permission_scope: read-write
+    working_dir: .
+    env:
+      NODE_ENV: production
+    timeout: 30
+    startup_timeout: 10
+    max_restarts: 3
+    health_check:
+      enabled: true
+      interval: 30
+
+  # Example: GitHub MCP server
+  - name: github
+    transport: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-github"
+    description: "GitHub operations via MCP (requires GITHUB_TOKEN)"
+    capabilities:
+      - action: read
+        auth: token-required
+        description: "Read GitHub repositories and issues"
+      - action: write
+        auth: token-required
+        description: "Create and update GitHub resources"
+      - action: search
+        auth: token-required
+        description: "Search GitHub repositories and code"
+    permission_scope: read-write
+    working_dir: .
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
+    timeout: 45
+    startup_timeout: 15
+    max_restarts: 3
+    health_check:
+      enabled: true
+      interval: 60
+
+  # Example: Python-based calculator MCP server
+  - name: calculator
+    transport: stdio
+    command: python
+    args:
+      - "-m"
+      - "mcp_servers.calculator.server"
+    description: "Basic math operations via MCP"
+    capabilities:
+      - action: compute
+        auth: none
+        description: "Perform mathematical calculations"
+    permission_scope: read-only
+    working_dir: ./src
+    env:
+      PYTHONPATH: "./src"
+    timeout: 10
+    startup_timeout: 5
+    max_restarts: 2
+    health_check:
+      enabled: true
+      interval: 30
+
+  # Example: Database query MCP server
+  - name: database
+    transport: stdio
+    command: node
+    args:
+      - "./mcp_servers/database/server.js"
+    description: "Database query operations via MCP"
+    capabilities:
+      - action: read
+        auth: connection-required
+        description: "Execute SELECT queries"
+      - action: write
+        auth: connection-required
+        description: "Execute INSERT/UPDATE/DELETE queries"
+    permission_scope: read-write
+    working_dir: .
+    env:
+      DB_HOST: "${DB_HOST:-localhost}"
+      DB_PORT: "${DB_PORT:-5432}"
+      DB_NAME: "${DB_NAME:-cuga}"
+      DB_USER: "${DB_USER}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+    timeout: 60
+    startup_timeout: 20
+    max_restarts: 3
+    health_check:
+      enabled: true
+      interval: 45
